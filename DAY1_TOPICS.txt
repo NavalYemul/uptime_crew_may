@@ -1,0 +1,949 @@
+================================================================================
+  DAY 1 — Python for AI Systems
+  Topic Reference Guide: Concept + Real-World Example + Code Location
+================================================================================
+  5 days of Data Engineering & AI  |  Day 1 of 5
+  Project folder: day1-ai-foundations/
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 1: PYTHON IN THE CONTEXT OF AI SYSTEMS
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Python's Role in AI
+--------------------------
+What it is:
+  Python became the default language for AI because of its readable syntax,
+  massive ecosystem of numerical/ML libraries, and fast iteration speed.
+  Most AI research is published with Python code. If you want to use
+  TensorFlow, PyTorch, scikit-learn, Hugging Face, or LangChain — they are
+  all Python-first.
+
+Real-world example:
+  Google's DeepMind writes research prototypes in Python. When OpenAI built
+  GPT, the training scripts, data pipelines, and inference APIs were all
+  Python. A data engineer at JP Morgan building a fraud detection pipeline
+  writes the feature engineering, model training, and REST API all in Python.
+
+Code link:
+  Every file in src/day1/ is an example of Python used in an AI context.
+  Entry point: run_all.py — runs the full Day 1 pipeline end to end.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 2: JAVA → PYTHON TRANSFER
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Types — Dynamic vs Static
+----------------------------------
+What it is:
+  Java is statically typed: you declare the type at compile time and the
+  compiler enforces it. Python is dynamically typed: types are checked at
+  runtime. In Python, the same variable can hold an int, then a string.
+  Type hints (x: int = 5) are optional annotations — Python does not enforce
+  them at runtime but tools like mypy and Pydantic do.
+
+Real-world example:
+  A Java method: public double predict(List<Double> features) throws IOException
+  The Python equivalent: def predict(features: list[float]) -> float
+  Both communicate intent. But in Python, if you pass a string, Python will
+  only fail when the code runs, not when you write it. This is why Pydantic
+  (Section 5) exists — to bring Java-style validation back where it matters.
+
+Code link:
+  src/day1/models.py — every class and function uses type hints.
+  Compare Student (line 28) vs TrainingRequest (line 162): one is a plain
+  dataclass with hints, the other is Pydantic which actually enforces them.
+
+
+TOPIC: OOP — Classes in Python vs Java
+----------------------------------------
+What it is:
+  Python classes use def __init__(self) instead of a constructor method.
+  "self" is like Java's "this" but must be explicitly declared. Python has
+  no access modifiers (no public/private keyword) — by convention, a leading
+  underscore _foo means "treat this as private." Python supports multiple
+  inheritance. Everything is an object, including classes themselves.
+
+Real-world example:
+  A Java Spring service: @Service public class ModelService { }
+  In Python (FastAPI): class ModelService: — that's it. No annotation needed.
+  Django ORM models are Python classes. LangChain agents are Python classes.
+  The entire scikit-learn estimator API (fit/predict/transform) is built on
+  Python OOP.
+
+Code link:
+  src/day1/models.py — Student (line 28), Course (line 62), Dataset (line 131)
+  Each has methods, properties, and shows Python OOP patterns with Java
+  equivalents written in the comments.
+
+
+TOPIC: Exceptions in Python
+-----------------------------
+What it is:
+  Python uses try/except/finally (not try/catch/finally like Java). You can
+  raise any exception with raise ValueError("message"). Custom exceptions
+  inherit from Exception. Python exceptions are unchecked — unlike Java's
+  checked exceptions, you never declare "throws" on a method signature.
+
+Real-world example:
+  Pydantic raises a ValidationError when bad data arrives at an API endpoint.
+  FastAPI catches it automatically and returns a 422 HTTP response. In a
+  Databricks notebook, if your PySpark job reads a corrupt Parquet file,
+  Python raises an AnalysisException from the Java Spark layer underneath.
+
+Code link:
+  src/day1/models.py — MLExperiment.__post_init__ (line 104) raises ValueError
+  if accuracy is outside [0, 1]. The demo section (line 272) shows the
+  try/except pattern catching it. TrainingRequest (line 162) lets Pydantic
+  raise ValidationError automatically.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 3: DATACLASSES FOR PLAIN DATA
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: @dataclass
+------------------
+What it is:
+  A @dataclass auto-generates __init__, __repr__, and __eq__ for you based on
+  the fields you declare. It is Python's equivalent of Java's Lombok @Data or
+  Java 16+ records. You write the fields, Python writes the boilerplate.
+  Without @dataclass, you'd write 20 lines; with it, you write 5.
+
+Real-world example:
+  In a Databricks ML pipeline, every experiment run has a name, algorithm,
+  and accuracy. Instead of a plain dict (which has no type safety) or a full
+  class (which requires __init__ boilerplate), you use a dataclass. Libraries
+  like Apache Airflow use dataclasses internally to represent DAG task metadata.
+
+Code link:
+  src/day1/models.py — 5 dataclass examples:
+    Example 1 — Student (line 28):         basic mutable dataclass
+    Example 2 — Coordinate (line 47):      frozen=True (immutable)
+    Example 3 — Course (line 62):          default_factory for list fields
+    Example 4 — MLExperiment (line 92):    __post_init__ for validation
+    Example 5 — DataPoint/Dataset (119):   nested dataclasses (composition)
+
+  Tests: tests/test_models.py lines 17–60 cover all 5 examples.
+
+
+TOPIC: @dataclass(frozen=True)
+--------------------------------
+What it is:
+  frozen=True makes the dataclass immutable after creation. Any attempt to
+  assign a new value raises FrozenInstanceError. This is Python's equivalent
+  of Java's record (Java 16+) or Lombok @Value. Use it for value objects —
+  things that represent a value, not an entity that changes over time.
+
+Real-world example:
+  A GPS coordinate (lat, lon) should never change after creation — it is a
+  fact about a location. A currency pair (USD/INR) is a value object. In ML,
+  a hyperparameter configuration should be frozen after the experiment starts
+  so that logging and reproducibility are guaranteed.
+
+Code link:
+  src/day1/models.py — Coordinate (line 47), distance_to method (line 55).
+  Test: tests/test_models.py — test_frozen_dataclass_raises_on_mutation (line 28)
+  proves that c1.x = 99.0 raises an exception.
+
+
+TOPIC: field(default_factory=list)
+------------------------------------
+What it is:
+  You cannot use a mutable default like enrolled: list = [] in a dataclass.
+  This creates one shared list across ALL instances — the same bug exists in
+  Java if you initialise a static list field. The fix is field(default_factory=list),
+  which creates a new list for each instance.
+
+Real-world example:
+  Every student object (or every ML experiment object) needs its OWN empty
+  list of results, not a shared one. In Django, model instances each have their
+  own queryset. In LangChain, each agent has its own memory list.
+
+Code link:
+  src/day1/models.py — Course.enrolled (line 68): field(default_factory=list)
+  The comment on line 65 explains the bug and the fix side by side.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 4: TYPE HINTS AS A DESIGN TOOL
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Type Hints
+------------------
+What it is:
+  Type hints (PEP 484) let you annotate variables, function parameters, and
+  return types with their expected type. Python does NOT enforce them at
+  runtime — they are documentation that tools (mypy, Pylance, Pydantic) can
+  check. Key types: int, str, float, bool, list[str], dict[str, int],
+  Optional[float], tuple[int, ...], Any, Union[str, float].
+
+Real-world example:
+  Netflix's data pipeline code uses type hints so that any engineer can read
+  def get_recommendations(user_id: int, limit: int = 10) -> list[str]
+  and immediately understand the contract without reading the body. In a
+  FastAPI application, the type hints on the function parameters ARE the API
+  schema — FastAPI reads them to generate OpenAPI documentation automatically.
+
+Code link:
+  src/day1/models.py — every function and class uses type hints throughout.
+  str | float in PredictionResponse.prediction (line 202) shows Union syntax.
+  list[str] = field(default_factory=list) in Course (line 68) shows generics.
+  Optional[float] in ModelMetrics (line 187) shows nullable fields.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 5: PYDANTIC v2 FOR STRUCTURED DATA VALIDATION
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Pydantic BaseModel
+--------------------------
+What it is:
+  Pydantic reads your type hints and ACTUALLY enforces them at runtime. If you
+  pass a string where an int is expected, Pydantic tries to coerce it (e.g.,
+  "42" → 42) and raises a ValidationError with a clear message if it cannot.
+  It also provides serialisation (model_dump(), model_dump_json()) and
+  deserialisation (Model.model_validate(dict)) for free.
+
+Real-world example:
+  FastAPI uses Pydantic for every request body and response. When a client
+  sends a POST request to /train with a JSON body, FastAPI uses your Pydantic
+  model to validate it before your code ever runs. If the payload is wrong,
+  FastAPI returns 422 Unprocessable Entity automatically — you write zero
+  validation logic. Databricks MLflow uses Pydantic internally to define
+  model input/output schemas.
+
+Code link:
+  src/day1/models.py:
+    TrainingRequest (line 162) — validates model_name, algorithm, test_size,
+      features list and target field. Shows Field(ge=0.1, le=0.5) constraints.
+    ModelMetrics (line 186)    — optional float fields with bounds.
+    PredictionResponse (line 200) — response schema with auto timestamp.
+    DatasetStats (line 211)    — shows @model_validator for cross-field checks.
+
+
+TOPIC: @field_validator
+------------------------
+What it is:
+  A @field_validator runs custom validation logic on a single field after
+  Pydantic's type coercion. Equivalent to Java's @AssertTrue or a custom
+  @Constraint annotation in Bean Validation. Mark it @classmethod.
+
+Real-world example:
+  Validating that an ML algorithm name is in a whitelist before accepting a
+  training job. In a payment API, validating that a currency code is exactly
+  3 uppercase letters. In a trading system, ensuring an order quantity is
+  a whole number.
+
+Code link:
+  src/day1/models.py — TrainingRequest.validate_algorithm (line 175).
+  Raises ValueError if algorithm is not in the allowed set.
+  Test: tests/test_models.py — test_pydantic_invalid_algorithm_raises (line 81)
+
+
+TOPIC: @model_validator (cross-field validation)
+-------------------------------------------------
+What it is:
+  A @model_validator runs after ALL fields are populated, letting you check
+  relationships between fields. Equivalent to Java's class-level @ScriptAssert
+  or a custom validator that receives the whole object.
+
+Real-world example:
+  A dataset with num_samples=150 but class_distribution summing to 90 is
+  contradictory. Catching this at the boundary (when the object is created)
+  prevents subtle bugs downstream. In a booking system, validating that
+  checkout_date is after checkin_date is a cross-field validation.
+
+Code link:
+  src/day1/models.py — DatasetStats.check_distribution_totals (line 221).
+  Test: tests/test_models.py — test_dataset_stats_distribution_mismatch_raises
+  (line 96) confirms it raises ValidationError when totals don't match.
+
+
+TOPIC: Pydantic Settings
+-------------------------
+What it is:
+  BaseSettings reads configuration from environment variables automatically.
+  Define fields with defaults; they are overridden by env vars at runtime.
+  Perfect for 12-factor app configuration (different values in dev/staging/prod
+  without changing code).
+
+Real-world example:
+  A deployed FastAPI model server needs the database URL, API keys, and port
+  number from the environment (set by Kubernetes secrets, not hardcoded).
+  export APP_MODEL_SERVER_PORT=9000 and your AppSettings object reads it
+  automatically. Used in production by companies running microservices on AWS,
+  Azure AKS, or Databricks Apps.
+
+Code link:
+  src/day1/models.py — AppSettings (line 230). env_prefix="APP_" means all
+  env vars must start with APP_ (e.g., APP_LOG_LEVEL=DEBUG).
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 6: MODERN PACKAGE MANAGEMENT WITH UV
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: uv — Fast Python Package Manager
+-----------------------------------------
+What it is:
+  uv is a drop-in replacement for pip + virtualenv written in Rust. It is
+  10–100x faster than pip because it downloads packages in parallel and uses
+  a lockfile (uv.lock) to guarantee reproducible installs. It reads project
+  metadata from pyproject.toml (the modern standard, replacing setup.py and
+  requirements.txt). One tool handles: venv creation, package install,
+  dependency resolution, and script running.
+
+Real-world example:
+  On a CI/CD pipeline at a bank, the build step used to take 4 minutes just
+  installing Python packages. With uv it takes 15 seconds. A data science team
+  at a consultancy uses uv to ensure every analyst gets the exact same
+  package versions — no more "it works on my machine" bugs caused by different
+  scikit-learn versions producing slightly different results.
+
+Commands used in this project:
+  uv venv --python 3.12        # create virtual environment
+  source .venv/bin/activate    # activate it
+  uv pip install -e .          # install this project + all dependencies
+  uv run pytest tests/ -v      # run tests inside the venv
+
+Code link:
+  pyproject.toml — defines project name, Python version constraint
+    (requires-python = ">=3.12"), all dependencies in [project.dependencies],
+    and pytest config in [tool.pytest.ini_options].
+  .python-version — single line "3.12", tells uv which Python to use.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 7: AI vs ML vs DEEP LEARNING
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: The Three-Layer Hierarchy
+----------------------------------
+What it is:
+  AI (Artificial Intelligence) is the broadest category — any technique that
+  makes machines behave intelligently. This includes rule-based systems, expert
+  systems, search algorithms, and ML. ML (Machine Learning) is a subset of AI
+  where machines learn patterns from data instead of following hand-coded rules.
+  Deep Learning is a subset of ML that uses neural networks with many layers
+  (deep = many layers). DL requires large datasets and GPUs but achieves
+  state-of-the-art on images, speech, and language.
+
+Real-world examples:
+  AI:            A chess engine (Deep Blue, 1997) — rule-based tree search.
+  ML:            Spam filter — learns from labelled email examples.
+  Deep Learning: GPT-4 for text, Stable Diffusion for images, Whisper for
+                 speech — all require billions of training examples and GPUs.
+
+  Today at your company: a Power BI dashboard = just data/BI (not AI).
+  A churn prediction model in scikit-learn = classical ML.
+  Databricks AutoML = classical ML with automation.
+  Azure OpenAI, Anthropic Claude = Deep Learning / LLMs.
+
+Code link:
+  src/day1/ml_workflow.py — the full concept map is in the docstring at the
+  top of the file (lines 32–65) with the three-layer hierarchy explained.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 8: SUPERVISED vs UNSUPERVISED LEARNING
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Supervised Learning
+---------------------------
+What it is:
+  You have labelled data — each training example has an input (features) and
+  a known output (label/target). The model learns the mapping from input to
+  output. Supervised learning has two sub-types: classification (output is a
+  category) and regression (output is a number).
+
+Real-world example:
+  Email spam filter: input = email text features, label = spam/not-spam.
+  Credit scoring: input = customer financial data, label = default/no-default.
+  House price prediction: input = size/location/rooms, output = price (a number).
+  In our project: Iris flower classification (input = petal/sepal measurements,
+  output = setosa/versicolor/virginica).
+
+Code link:
+  src/day1/ml_workflow.py:
+    load_classification_data (line 104) — loads labelled Iris dataset.
+    train_logistic_regression (line 172) — supervised classification.
+    train_linear_regression (line 190) — supervised regression.
+
+
+TOPIC: Unsupervised Learning
+-----------------------------
+What it is:
+  You have data with NO labels. The model must find hidden structure on its
+  own. Common techniques: clustering (group similar items), dimensionality
+  reduction (compress features), anomaly detection (find outliers), and
+  association rules (market basket analysis).
+
+Real-world example:
+  Customer segmentation: no one labelled customers as "high-value" or "at-risk"
+  in advance — k-means clustering groups them automatically by spending patterns.
+  PCA (dimensionality reduction) is used in genomics to find patterns in
+  thousands of gene expression levels. Anomaly detection flags unusual network
+  traffic in cybersecurity without needing labelled attack examples.
+
+Code link:
+  src/day1/embeddings.py — project_documents_2d (line 220) uses PCA, which
+  is an unsupervised technique. The 2D scatter in visualizations.py shows
+  natural clusters forming without any cluster labels being given.
+  notebooks/sentence_embeddings.ipynb — Cell 6 does PCA and shows how
+  ML/NLP/Embeddings/DeepLearning sentences naturally cluster together.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 9: NEURAL NETWORKS BASICS
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Neural Networks
+-----------------------
+What it is:
+  A neural network is a stack of layers of mathematical operations. Each layer
+  takes a vector input, multiplies by a weight matrix, adds a bias, and applies
+  a non-linear activation function (ReLU, sigmoid, tanh). The network learns
+  by computing the error on its predictions (loss), then using backpropagation
+  to adjust weights in the direction that reduces the error (gradient descent).
+  A "deep" network has many hidden layers between input and output.
+
+Real-world example:
+  Google Photos uses a deep CNN (convolutional neural network) to recognise
+  faces and objects. Spotify's recommendation engine uses neural nets to embed
+  songs and users in the same vector space. Large language models like GPT and
+  Claude are transformers — a type of neural network with attention mechanisms
+  that process entire sequences at once.
+
+Code link:
+  The concept lives in src/day1/embeddings.py docstring (lines 32–65) which
+  explains that Word2Vec trains a shallow neural network to produce word vectors.
+  notebooks/sentence_embeddings.ipynb — Cell 7 uses gensim's Word2Vec which
+  internally trains a 2-layer neural network on the corpus.
+  (Full neural net implementation = Day 2/3 topic with PyTorch or TensorFlow.)
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 10: NLP FUNDAMENTALS AND TOKENIZATION
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: What is NLP?
+--------------------
+What it is:
+  Natural Language Processing (NLP) is the subfield of AI focused on enabling
+  computers to understand and generate human language. Core tasks include:
+  tokenization, part-of-speech tagging, named entity recognition, sentiment
+  analysis, machine translation, and question answering. Modern NLP is dominated
+  by large language models (LLMs) like GPT and Claude, which are trained on
+  trillions of tokens of text.
+
+Real-world example:
+  Gmail's smart reply ("Sounds good!", "Thanks!") is NLP. LinkedIn's job
+  recommendation analyses your profile text. When you call a bank helpline and
+  a voice bot understands "I want to check my balance", that is speech-to-text
+  plus NLP intent classification. Databricks Dolly, Meta LLaMA, and Anthropic
+  Claude are all NLP systems.
+
+Code link:
+  src/day1/nlp_basics.py — the entire file. The SAMPLE_TEXT and CORPUS
+  constants (lines 50–70) are the raw data. The WHAT IS NLP section in the
+  docstring (lines 33–47) lists key tasks.
+
+
+TOPIC: Tokenization
+--------------------
+What it is:
+  Tokenization splits raw text into individual units (tokens). Word tokenization
+  splits "I love Python!" into ["I", "love", "Python", "!"]. Sentence
+  tokenization splits a paragraph into individual sentences. Modern LLMs use
+  subword tokenization (BPE or WordPiece) — "unbelievable" might become
+  ["un", "believ", "able"] — allowing the model to handle words it never saw
+  during training.
+
+Real-world example:
+  When you send a message to Claude, it is first tokenized before the model
+  processes it. "Hello, how are you?" might become 7 tokens. GPT-4 charges by
+  the token because tokenization is the fundamental unit of LLM computation.
+  In a fraud detection system, a customer's transaction description "AMAZON
+  PRIME MONTHLY" is tokenized before being used as a feature.
+
+Code link:
+  src/day1/nlp_basics.py:
+    tokenize_words (line 79)     — word-level tokenization with NLTK Punkt.
+    tokenize_sentences (line 88) — sentence-level tokenization.
+  Tests: tests/test_nlp.py — test_word_tokenize_basic (line 16),
+    test_sentence_tokenize_count (line 22).
+
+
+TOPIC: Stop Words
+------------------
+What it is:
+  Stop words are high-frequency, low-meaning words: "the", "is", "at", "which",
+  "on", "a", "an". Removing them reduces noise, shrinks vocabulary size, and
+  speeds up similarity calculations. However, modern LLMs do NOT remove stop
+  words because transformer attention can learn which words matter in context.
+
+Real-world example:
+  A search engine for internal company documents removes stop words so that
+  "the project requirements" and "project requirements" return the same results.
+  TF-IDF (used in information retrieval) naturally down-weights stop words
+  through the IDF component without needing explicit removal.
+
+Code link:
+  src/day1/nlp_basics.py — remove_stopwords (line 102). Uses NLTK's built-in
+  English stop word list (179 words). Called inside full_preprocess (line 132).
+  Tests: test_stopword_removal_removes_the and
+    test_stopword_removal_preserves_content_words (lines 32–40 in test_nlp.py).
+
+
+TOPIC: Stemming vs Lemmatization
+----------------------------------
+What it is:
+  Both reduce words to a base form to group variants together.
+  Stemming: crude rule-based suffix removal. Fast but imprecise.
+    "running" → "run", "studies" → "studi" (not a real word).
+  Lemmatization: dictionary-based root form. Slower but linguistically correct.
+    "running" → "run", "studies" → "study", "better" → "good".
+  Use lemmatization when semantic accuracy matters; stemming for large-scale
+  search indexing where speed matters more.
+
+Real-world example:
+  Elasticsearch uses stemming for its full-text search to match "running" with
+  "run" and "runs". A clinical NLP system analysing doctor's notes would use
+  lemmatization so "medications" and "medication" are treated the same without
+  creating nonsense stems.
+
+Code link:
+  src/day1/nlp_basics.py:
+    stem_tokens (line 112)       — PorterStemmer from NLTK.
+    lemmatize_tokens (line 122)  — WordNetLemmatizer from NLTK.
+  The demo (line 196) prints a side-by-side comparison of both on the same
+  input words.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 11: WORD EMBEDDINGS (Word2Vec, GloVe)
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: The Embedding Idea
+--------------------------
+What it is:
+  An embedding maps each word (or sentence, image, user) to a dense vector of
+  real numbers. Words with similar meaning end up close in vector space.
+  This is the foundation of modern AI: before you can do anything mathematical
+  with language, you must convert words to numbers. The key insight is that
+  you can learn these vectors from raw text without any labels, just by having
+  the model predict surrounding words.
+
+Real-world example:
+  Spotify embeds both songs and users in the same 128-dim vector space — if
+  your vector is close to a song's vector, Spotify recommends it. Amazon
+  embeds products so "red running shoes" and "scarlet jogging trainers" are
+  close. In Databricks, you can store embedding vectors in Delta Lake and do
+  vector similarity search to build a recommendation or semantic search system.
+
+Code link:
+  src/day1/embeddings.py — the concept explanation docstring (lines 32–65)
+  gives the full comparison: BoW → TF-IDF → Word2Vec → modern LLM embeddings.
+
+
+TOPIC: Word2Vec
+----------------
+What it is:
+  Word2Vec (Google, 2013) trains a shallow 2-layer neural network to predict
+  a word's context words (Skip-gram) or predict a word from its context (CBOW).
+  The weights of the hidden layer become the word vectors. Trained on 100 billion
+  words, Word2Vec produces vectors where: king - man + woman ≈ queen.
+  vector_size sets dimensionality (typically 100–300).
+
+Real-world example:
+  Google News Word2Vec (released 2013) was trained on 100 billion words and
+  produced 300-dim vectors for 3 million words. Companies use pre-trained
+  Word2Vec embeddings as features in customer sentiment classifiers, document
+  search engines, and chatbot intent recognition. gensim is the standard
+  Python library for training and using Word2Vec.
+
+Code link:
+  src/day1/embeddings.py:
+    train_word2vec (line 167) — trains on our toy corpus with 50 dims,
+      window=3, skip-gram (sg=1), 300 epochs.
+    explore_embeddings (line 199) — shows nearest neighbours for target words.
+  notebooks/sentence_embeddings.ipynb — Cell 7 and Cell 8 train Word2Vec and
+    visualize the word vectors in 2D.
+
+
+TOPIC: GloVe (Global Vectors)
+-------------------------------
+What it is:
+  GloVe (Stanford, 2014) builds a word co-occurrence matrix first — counting
+  how often every word appears next to every other word in a large corpus.
+  It then factorises this matrix to produce word vectors. Unlike Word2Vec which
+  uses local context windows, GloVe uses global statistics. GloVe often
+  outperforms Word2Vec on analogy tasks.
+
+Real-world example:
+  Stanford releases pre-trained GloVe vectors (6B, 42B, 840B token versions)
+  that you can download and use directly — no training needed. A startup
+  building a legal document search engine would use 300-dim GloVe vectors as a
+  starting point before fine-tuning on their own legal corpus. spaCy's en_core_web_md
+  model bundles GloVe-like vectors that you get with spacy.load().
+
+Code link:
+  src/day1/embeddings.py — GloVe is explained conceptually in the docstring
+  (line 53) as a contrast to Word2Vec. (Using pre-trained GloVe = Day 2 topic,
+  as it requires downloading a 800MB+ file.)
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 12: SEMANTIC SIMILARITY AND COSINE SIMILARITY
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Cosine Similarity
+-------------------------
+What it is:
+  Cosine similarity measures the angle between two vectors, not their
+  magnitude. Formula: cos(A, B) = dot(A, B) / (|A| × |B|). Returns a value
+  from -1 to 1 where 1 = same direction (similar), 0 = perpendicular
+  (unrelated), -1 = opposite. We use direction (not distance) because
+  "the cat sat" vs "the cat sat on the mat" should be similar even though one
+  vector is longer.
+
+Real-world example:
+  Pinecone, Weaviate, and ChromaDB — the most popular vector databases —
+  all default to cosine similarity for their nearest-neighbour search.
+  When you send a question to a RAG chatbot (like a document Q&A system),
+  the system embeds your question and does cosine similarity search to find
+  the most relevant paragraphs in the database. Used in every modern semantic
+  search and recommendation system.
+
+Code link:
+  src/day1/embeddings.py:
+    cosine_sim (line 111) — manual implementation showing the formula step by step.
+    pairwise_similarity (line 136) — uses sklearn's cosine_similarity on TF-IDF.
+    semantic_search (line 143) — real semantic search using cosine ranking.
+  Tests: tests/test_nlp.py lines 68–90:
+    test_cosine_identical_vectors — returns 1.0
+    test_cosine_orthogonal_vectors — returns 0.0
+    test_cosine_opposite_vectors — returns -1.0
+    test_cosine_range_random — verifies output always in [-1, 1]
+
+
+TOPIC: Semantic Similarity
+---------------------------
+What it is:
+  Semantic similarity measures how similar two pieces of text are in MEANING,
+  not just in exact word overlap. "The dog barked" and "The canine made noise"
+  have zero word overlap but high semantic similarity. Computing it requires
+  embeddings (not just word counts). Modern approaches use sentence transformers
+  (BERT-based) that produce a single vector for an entire sentence.
+
+Real-world example:
+  Stack Overflow uses semantic similarity to find duplicate questions.
+  Google Search uses it to return results about "fast cars" when you search
+  "quick automobiles". In our Day 1 project, we demonstrate it with TF-IDF
+  vectors (approximation) in the semantic_search function and the notebook.
+
+Code link:
+  src/day1/embeddings.py — semantic_search (line 143): given any query string,
+    find the 3 most semantically similar documents using TF-IDF + cosine.
+  notebooks/sentence_embeddings.ipynb — Cell 5 (semantic search) and Cell 4
+    (similarity heatmap) visually prove that ML/DL sentences score higher with
+    each other than with NLP/Embeddings sentences.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 13: VECTOR SPACE MODEL
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Vector Space Model (VSM)
+---------------------------------
+What it is:
+  The Vector Space Model represents documents as vectors in a multi-dimensional
+  space where each dimension corresponds to a term. Documents with similar
+  content will have similar vectors. TF-IDF is the classic implementation of
+  VSM. The same idea extends to word embeddings (Word2Vec) and sentence
+  embeddings (BERT) — you are always projecting language into a mathematical
+  space where geometry encodes meaning.
+
+Real-world example:
+  Every modern information retrieval system (Google, Elasticsearch, Solr) is
+  built on VSM. When you search on a corporate SharePoint or Confluence,
+  TF-IDF vectors power the results ranking. Databricks Vector Search stores
+  high-dimensional vectors in Delta Lake and runs approximate nearest-neighbour
+  search for RAG pipelines.
+
+Code link:
+  src/day1/nlp_basics.py — tfidf_vectors (line 164) builds the TF-IDF VSM.
+  src/day1/embeddings.py — project_documents_2d (line 220) projects the VSM
+    to 2D using PCA, making the vector space visible.
+  src/day1/visualizations.py — plot_2d_embeddings (line 183) plots the 2D
+    projection as a scatter plot so you can see clusters forming in the space.
+  notebooks/sentence_embeddings.ipynb — Cells 3, 4, 5 build and query the VSM.
+    Cell 6 projects it to 2D and shows the semantic groupings visually.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 14: ML WORKFLOW
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Step 1 — Data Collection
+---------------------------------
+What it is:
+  Before any ML, you need data. Structured data comes from databases, CSVs,
+  APIs. In the real world, data is dirty: missing values, duplicates, wrong
+  types, inconsistent formatting, class imbalance. The quality of your data
+  is the biggest determinant of model quality — "garbage in, garbage out."
+
+Real-world example:
+  A bank collecting customer transaction data for a fraud model has millions
+  of rows but only 0.1% are labelled as fraud (severe class imbalance). A
+  retail company collects point-of-sale data across 500 stores in different
+  formats. In Databricks, raw data lands in the Bronze layer of a Medallion
+  architecture before any cleaning.
+
+Code link:
+  src/day1/ml_workflow.py:
+    load_classification_data (line 104) — loads the Iris dataset (150 labelled
+      samples, 4 features, 3 balanced classes). Prints shape and distribution.
+    load_regression_data (line 115) — generates synthetic regression data
+      using sklearn's make_regression (controlled noise for reproducibility).
+
+
+TOPIC: Step 2 — Preprocessing
+-------------------------------
+What it is:
+  Raw features rarely go directly into a model. Preprocessing converts data
+  into the form the model expects. Key steps: scaling (normalize numerical
+  ranges), encoding (convert categories to numbers), handling missing values,
+  feature selection. StandardScaler transforms each feature to zero mean and
+  unit variance — critical for distance-based models (SVM, KNN, logistic
+  regression) and any model using gradient descent.
+
+Real-world example:
+  A house price model has features: area (0–5000 sqft), bedrooms (1–10),
+  price (0–10M). Without scaling, "area" dominates because its range is 1000x
+  larger than "bedrooms." After StandardScaler, all features have equal weight.
+  At Shell or Walmart, feature pipelines run on Databricks Spark to preprocess
+  millions of rows before training.
+
+Code link:
+  src/day1/ml_workflow.py — preprocess_classification (line 126):
+    StandardScaler (zero mean, unit variance) + LabelEncoder (string → int).
+    Comment on line 138 explicitly warns about data leakage: fit scaler on
+    training data only, then transform both train and test.
+
+
+TOPIC: Step 3 — Train/Test Split
+----------------------------------
+What it is:
+  You must evaluate your model on data it has never seen during training.
+  The holdout method splits data into training (80%) and test (20%) sets.
+  The model trains only on the training set. The test set is "locked away"
+  until final evaluation. stratify=y ensures both splits have the same class
+  proportions (important for imbalanced datasets).
+
+Real-world example:
+  If you trained AND evaluated on all 150 Iris samples, you'd get 100%
+  accuracy — but the model might have just memorized the data. On new flowers
+  from the greenhouse, it would fail. This is overfitting. In financial fraud
+  detection, you must ensure your test set comes from future time periods
+  (time-series split), not random rows, to avoid leakage from future data.
+
+Code link:
+  src/day1/ml_workflow.py — split_data (line 151). Uses stratify=y.
+  The sklearn Pipeline (line 285) prevents data leakage by ensuring the
+  scaler's fit() is called only on training data inside the pipeline.
+  Test: test_split_respects_test_size in test_ml_workflow.py confirms ratio.
+
+
+TOPIC: Step 4 — Training
+--------------------------
+What it is:
+  Training = fitting a model to the training data. The model adjusts its
+  internal parameters to minimise prediction error. Different algorithms work
+  differently: Logistic Regression adjusts weights iteratively; Random Forest
+  builds 100 decision trees in parallel on random data subsets; Linear
+  Regression solves a system of equations analytically.
+
+Real-world example:
+  JP Morgan trains logistic regression models every night on the previous day's
+  transaction data to update fraud scores. Databricks AutoML will try multiple
+  algorithms (LR, RF, XGBoost, LightGBM) and pick the best one. Training a
+  large language model like GPT-4 required months on thousands of GPUs —
+  classical ML training on structured data takes seconds to minutes.
+
+Code link:
+  src/day1/ml_workflow.py:
+    train_logistic_regression (line 172) — simple, interpretable, fast.
+    train_random_forest (line 181) — ensemble of 100 trees, often better.
+    train_linear_regression (line 190) — regression output.
+
+
+TOPIC: Step 5 — Evaluation
+----------------------------
+What it is:
+  Choosing the right metric is critical. For classification: accuracy (overall
+  % correct), precision (of predicted positives, how many are real?), recall
+  (of actual positives, how many did we find?), F1 (harmonic mean of P and R),
+  AUC-ROC (area under ROC curve, threshold-independent). For regression: MSE,
+  RMSE, R². In production, also monitor model drift over time.
+
+Real-world example:
+  A cancer screening model must prioritise RECALL — missing a real cancer
+  (false negative) is worse than flagging a healthy person (false positive).
+  A spam filter should prioritise PRECISION — marking a legitimate email as
+  spam is worse than letting spam through. Accuracy is useless for fraud
+  detection (99.9% "not fraud" trivially achieves 99.9% accuracy).
+
+Code link:
+  src/day1/ml_workflow.py — evaluate_classifier (line 203): computes all 5
+    classification metrics + confusion matrix + classification report.
+    evaluate_regressor (line 254): MSE, RMSE, R² for regression.
+  src/day1/visualizations.py:
+    plot_confusion_matrix (line 44) — heatmap of TP/FP/FN/TN.
+    plot_roc_curve (line 83) — ROC curve with AUC for each class.
+    plot_model_comparison (line 234) — grouped bar comparing LR vs RF.
+  Tests: tests/test_ml_workflow.py — test_classification_metrics_in_range,
+    test_auc_roc_present, test_cross_val_scores_populated (lines 42–58).
+
+
+TOPIC: Cross-Validation
+------------------------
+What it is:
+  A single train/test split can be lucky or unlucky depending on which samples
+  ended up where. K-fold cross-validation divides the data into K equal folds,
+  trains K models (each using a different fold as the test set), and averages
+  the scores. This gives a more reliable estimate of true performance.
+  5-fold is the standard. StratifiedKFold preserves class balance in each fold.
+
+Real-world example:
+  When comparing models to decide which to deploy at Walmart for demand
+  forecasting, you use cross-validation to ensure the "better" model is
+  genuinely better and not just lucky on one test split. Databricks MLflow
+  logs CV scores as experiment metrics for every run.
+
+Code link:
+  src/day1/ml_workflow.py — inside evaluate_classifier (line 237): uses
+    StratifiedKFold(n_splits=5). Results stored in MLResult.cv_scores.
+    MLResult.cv_mean and cv_std (lines 85, 90) summarise stability.
+  Test: test_cross_val_scores_populated confirms 5 scores are returned
+    and the mean is above 0.80.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 15: CLASSIFICATION vs REGRESSION
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Classification
+----------------------
+What it is:
+  Classification predicts which CATEGORY (class) an input belongs to.
+  Binary classification: 2 classes (spam/not-spam, fraud/not-fraud).
+  Multi-class: 3+ classes (setosa/versicolor/virginica, digit 0–9).
+  Multi-label: multiple classes can be true simultaneously (a news article
+  can be both "sports" and "finance").
+
+Real-world example:
+  Loan approval (approve/reject), disease diagnosis (positive/negative),
+  sentiment (positive/neutral/negative), image labelling (cat/dog/bird).
+  At a company like Crisil (credit ratings), classification models predict
+  credit default risk. At LTIMindtree, classification models tag support
+  tickets by priority and department automatically.
+
+Code link:
+  src/day1/ml_workflow.py:
+    train_logistic_regression (line 172) — linear classifier.
+    train_random_forest (line 181) — ensemble classifier.
+    evaluate_classifier (line 203) — all classification-specific metrics.
+  src/day1/models.py — TrainingRequest (line 162) shows how an ML API
+    request for a classification job is structured.
+  Tests: test_logistic_regression_accuracy, test_random_forest_accuracy
+    in test_ml_workflow.py prove that models hit accuracy thresholds.
+
+
+TOPIC: Regression
+------------------
+What it is:
+  Regression predicts a CONTINUOUS NUMBER. The output can be any real value,
+  not a category. Linear regression fits a straight line (or hyperplane) through
+  the data that minimises mean squared error. More complex variants: polynomial,
+  ridge, lasso, gradient boosting regression.
+
+Real-world example:
+  House price prediction ($), energy demand forecasting (megawatts),
+  employee salary estimation, stock return prediction, A/B test lift
+  estimation. At Tata Power, regression models forecast electricity demand
+  by hour. At Volkswagen, regression models predict factory equipment failure
+  time-to-failure. Any time the output is a number on a continuous scale,
+  it is a regression problem.
+
+Code link:
+  src/day1/ml_workflow.py:
+    load_regression_data (line 115) — synthetic 500-sample regression dataset.
+    train_linear_regression (line 190) — fits LinearRegression.
+    evaluate_regressor (line 254) — computes MSE, RMSE, R².
+    run_regression_demo (line 326) — end-to-end regression pipeline.
+  Tests: test_regression_r2_positive and test_regression_rmse_reasonable
+    in test_ml_workflow.py verify the model meets quality thresholds.
+
+
+================================================================================
+TECHNOLOGIES QUICK-REFERENCE
+================================================================================
+
+  scikit-learn  Supervised learning (LogReg, RF, LinearReg), preprocessing
+                (StandardScaler, LabelEncoder), Pipeline, train_test_split,
+                cross_val_score, all classification and regression metrics.
+                → src/day1/ml_workflow.py (entire file)
+
+  NLTK          Word tokenization (word_tokenize), sentence tokenization
+                (sent_tokenize), stop words corpus, PorterStemmer,
+                WordNetLemmatizer.
+                → src/day1/nlp_basics.py (entire file)
+
+  gensim        Word2Vec training and nearest-neighbour queries.
+                → src/day1/embeddings.py lines 167–214
+
+  matplotlib    Base plotting library. All plots call plt.show().
+                → src/day1/visualizations.py (all 5 functions)
+
+  seaborn       Statistical visualizations on top of matplotlib.
+                sns.heatmap (confusion matrix), sns.violinplot (distributions).
+                → src/day1/visualizations.py lines 57–75, 152–168
+
+  Pydantic v2   BaseModel, Field, field_validator, model_validator,
+                BaseSettings, model_dump(), model_dump_json().
+                → src/day1/models.py lines 157–246
+
+  pytest        Test runner. fixtures in conftest.py. assert statements.
+                59 tests across 3 test files.
+                → tests/conftest.py, test_models.py, test_ml_workflow.py,
+                  test_nlp.py
+
+  Jupyter       Notebook for interactive exploration. 9 cells covering
+                tokenization → TF-IDF → similarity → PCA → Word2Vec.
+                → notebooks/sentence_embeddings.ipynb
+
+
+================================================================================
+HOW TO NAVIGATE THE CODE
+================================================================================
+
+  Start here:   run_all.py              — runs all 5 modules in sequence
+  Theory:       src/day1/ml_workflow.py — best inline concept documentation
+  Validation:   src/day1/models.py      — all Java→Python analogies
+  Language:     src/day1/nlp_basics.py  — NLP pipeline step by step
+  Vectors:      src/day1/embeddings.py  — cosine similarity from scratch
+  Visuals:      src/day1/visualizations.py — 5 production-quality charts
+  Interactive:  notebooks/sentence_embeddings.ipynb — explore and modify
+  Proof:        tests/ (59 tests)        — every concept has a passing test
+
+  Run tests:    pytest tests/ -v
+  Run notebook: jupyter lab notebooks/sentence_embeddings.ipynb
+
+
+================================================================================
+  End of Day 1 Topic Reference  |  Naval Yemul  |  Data Master Consulting
+================================================================================
