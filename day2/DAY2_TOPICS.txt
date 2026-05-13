@@ -1,0 +1,1056 @@
+================================================================================
+  DAY 2 — Embeddings, Vector Search, RAG & Data Pipelines
+  Topic Reference Guide: Concept + Real-World Example + Code Location
+================================================================================
+  5 days of Data Engineering & AI  |  Day 2 of 5
+  Project folder: day2-embeddings-rag/
+  Entry point:    run_all.py
+  Tests:          pytest tests/ -v   →  92 tests, all passing
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+MODULE 1: NUMPY & PANDAS
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: NumPy Arrays vs Python Lists
+------------------------------------
+What it is:
+  NumPy arrays store all elements as the same data type (dtype) in a single
+  contiguous block of memory. Python lists store pointers to arbitrary objects
+  scattered across RAM. The result: NumPy array operations are 10–100x faster
+  because the CPU can apply a single instruction to an entire block of numbers
+  (SIMD vectorisation) with no Python interpreter overhead per element.
+  Every major ML library — scikit-learn, PyTorch, TensorFlow, JAX — uses NumPy
+  arrays (or their own tensor types that share the same memory layout) as their
+  fundamental data type.
+
+Real-world example:
+  A Databricks feature engineering job at a bank computes 500 features for
+  2 million customer records every night. If each feature was a Python list
+  operation, the job would take hours. As a NumPy vectorised operation, it
+  finishes in minutes. The same principle applies to embedding generation:
+  encoding 10,000 documents with sentence-transformers returns a (10000, 384)
+  NumPy array — a single matrix multiply, not a Python loop.
+
+Code link:
+  src/day2/numpy_pandas.py:25  →  array_basics()
+    - Creates arrays, computes sum/mean/std, dot product, element-wise multiply
+    - Shows reshape: a.reshape(1, 5) turns a 1D array into a 2D row matrix
+
+Tests:
+  tests/test_numpy_pandas.py:21  →  test_array_basics_keys / test_array_basics_values
+
+
+TOPIC: Broadcasting
+-------------------
+What it is:
+  Broadcasting is NumPy's rule for performing element-wise operations on arrays
+  of different shapes without copying data. When you subtract the column mean
+  from a 1000×50 matrix, NumPy "broadcasts" the (50,) mean vector across all
+  1000 rows automatically — no explicit loop, no memory copy. The rule: two
+  dimensions are compatible if they are equal OR one of them is 1.
+
+Real-world example:
+  L2 normalisation of an embedding matrix. You have 10,000 embeddings, each
+  384 dimensions. To normalise: divide each row by its own norm. The norms
+  are shape (10000, 1). NumPy broadcasts across all 384 columns automatically.
+  This is exactly how sentence-transformers normalises output vectors.
+
+Code link:
+  src/day2/numpy_pandas.py:46  →  broadcasting_demo()
+    - Generates a (4, 384) random matrix of "fake embeddings"
+    - Computes per-row L2 norms: norms = np.linalg.norm(mat, axis=1, keepdims=True)
+    - Normalises: normalised = mat / norms  ← broadcasting in action
+    - Computes cosine similarity matrix: normalised @ normalised.T  →  (4, 4)
+    - Verifies diagonal is all 1.0 (every vector is identical to itself)
+
+Tests:
+  tests/test_numpy_pandas.py:33  →  test_broadcasting_normalised
+  tests/test_numpy_pandas.py:40  →  test_broadcasting_diagonal_ones
+
+
+TOPIC: NumPy for ML — Softmax, Argmax, Outlier Capping
+-------------------------------------------------------
+What it is:
+  Softmax converts raw model output scores (logits) into probabilities that
+  sum to 1.0. Argmax returns the index of the highest value — used to get the
+  predicted class. Outlier capping (clipping values to the 5th–95th percentile)
+  is standard preprocessing before feeding numerical features into an ML model.
+
+Real-world example:
+  Every neural network classifier ends with a softmax layer. The model outputs
+  scores like [-2.1, 0.8, 3.4] and softmax converts them to [0.01, 0.07, 0.92].
+  The argmax of this is class 2. Outlier capping is used at Fibe (a fintech
+  company) before training credit scoring models — a single data entry error
+  of ₹999,999 income instead of ₹99,999 would otherwise skew the entire model.
+
+Code link:
+  src/day2/numpy_pandas.py:84  →  numpy_for_ml()
+    - softmax() inner function uses exp / exp.sum(axis=1, keepdims=True)
+    - logits.argmax(axis=1) returns predicted class per sample
+    - np.clip(data, p5, p95) caps outliers to the 5th and 95th percentile
+
+Tests:
+  tests/test_numpy_pandas.py:52  →  test_numpy_for_ml_keys
+  tests/test_numpy_pandas.py:58  →  test_softmax_sums_to_one
+
+
+TOPIC: Creating an AI/ML Dataset with Pandas
+--------------------------------------------
+What it is:
+  Pandas DataFrames are the standard in-memory table structure for data
+  science work. Rows are observations; columns are features. Pandas excels
+  at loading, inspecting, cleaning, and transforming tabular data before it
+  enters an ML pipeline. For datasets that fit in RAM (up to ~500 MB), Pandas
+  is the fastest tool for the job.
+
+Real-world example:
+  An ML engineer at Tredence loads experiment logs from an MLflow tracking
+  server into a Pandas DataFrame: model name, hyperparameters, accuracy, F1,
+  latency. Then they filter, sort, and visualise to pick the best model for
+  production. Exactly what create_ai_dataset() simulates.
+
+Code link:
+  src/day2/numpy_pandas.py:124  →  create_ai_dataset()
+    - Generates 120 rows of synthetic ML experiment logs
+    - Columns: run_id, algorithm, accuracy, f1_score, precision, recall,
+               latency_ms, train_size, dataset, status, deployed
+
+Tests:
+  tests/test_numpy_pandas.py:65  →  test_dataset_shape / test_dataset_columns
+
+
+TOPIC: DataFrame Wrangling — Filter, Derive, Sort, Missing Values
+-----------------------------------------------------------------
+What it is:
+  Real data is never clean. The wrangling step takes raw data and prepares it
+  for analysis or modelling: boolean filtering to select subsets, deriving new
+  columns (feature engineering), sorting to find top performers, and handling
+  missing values (imputation or removal).
+
+Real-world example:
+  At LTIMindtree, a data engineer ingests Salesforce CRM data into a Databricks
+  Delta table. Before training a churn model, they filter to active customers
+  (status == 'active'), derive a "days since last purchase" feature, fill null
+  purchase dates with the median, and sort by revenue to inspect top accounts.
+  All of this is standard Pandas wrangling.
+
+Code link:
+  src/day2/numpy_pandas.py:153  →  wrangling_essentials(df)
+    - Boolean filter:  df[df["accuracy"] > 0.85]
+    - Derived columns: df["score_composite"] = accuracy*0.7 + f1_score*0.3
+    - nlargest(5):     top 5 runs by composite score
+    - Null injection + fillna(median): simulates real missing value handling
+
+Tests:
+  tests/test_numpy_pandas.py:80  →  test_wrangling_essentials_keys
+  tests/test_numpy_pandas.py:88  →  test_wrangling_essentials_counts
+
+
+TOPIC: GroupBy — Aggregation & Model Leaderboard
+-------------------------------------------------
+What it is:
+  GroupBy splits a DataFrame into groups by a column value, applies an
+  aggregation function (mean, count, sum, max), and combines the results.
+  This is the Pandas equivalent of a SQL GROUP BY clause and is one of the
+  most-used operations in data engineering.
+
+Real-world example:
+  A data scientist at Crisil wants to compare model families: "Which algorithm
+  has the highest average accuracy across all experiments?" They run a groupby
+  on algorithm, aggregate by mean accuracy, and sort descending to produce a
+  model leaderboard. Same pattern used in Databricks AutoML result comparison.
+
+Code link:
+  src/day2/numpy_pandas.py:194  →  groupby_operations(df)
+    - Groups by "algorithm" → mean accuracy, mean F1, count, deployment rate
+    - Returns a sorted leaderboard DataFrame
+
+Tests:
+  tests/test_numpy_pandas.py:100 →  test_groupby_shape / test_groupby_columns
+
+
+TOPIC: Merge — Joining DataFrames (like SQL JOIN)
+-------------------------------------------------
+What it is:
+  Merge combines two DataFrames by matching rows on a common key column.
+  Inner join: only keep rows present in both tables. Left join: keep all rows
+  from the left table, fill NaN where the right table has no match. This is
+  the Pandas equivalent of SQL JOIN and is fundamental to any multi-table
+  data pipeline.
+
+Real-world example:
+  At Synechron, a data engineer has one Delta table of ML experiments (run_id,
+  accuracy) and another of deployment records (run_id, deployed_at, endpoint).
+  To build a report showing accuracy alongside deployment dates, they inner-join
+  on run_id. Rows without a deployment record are dropped (inner) or kept as
+  NaN (left join).
+
+Code link:
+  src/day2/numpy_pandas.py:219  →  merge_operations()
+    - Creates two synthetic DataFrames: experiments + deployments
+    - inner_merged: only deployed experiments
+    - left_merged:  all experiments, NaN for undeployed
+
+Tests:
+  tests/test_numpy_pandas.py:115 →  test_merge_inner / test_merge_left
+
+
+TOPIC: File Format Comparison — Parquet vs CSV vs JSON
+------------------------------------------------------
+What it is:
+  CSV is human-readable, row-based, uncompressed — large files, slow reads.
+  JSON adds type information and nesting, but is even larger.
+  Parquet is columnar and compressed. It stores each column together, so
+  reading just "accuracy" column doesn't need to touch "algorithm" data.
+  In production, Parquet files are 5–10x smaller than CSV and 10–50x faster
+  to query in Spark/Databricks because of column pruning and predicate pushdown.
+
+Real-world example:
+  Shell's data lake stores petabytes of IoT sensor data. If stored as CSV,
+  querying one week of temperature readings would scan every byte. In Parquet,
+  Databricks can skip entire row groups where the timestamp is out of range and
+  read only the temperature column — reducing I/O by 90%.
+
+Code link:
+  src/day2/numpy_pandas.py:255  →  file_format_comparison(df)
+    - Writes same DataFrame to Parquet, CSV, JSON in /tmp
+    - Compares byte sizes: parquet_vs_csv_ratio, parquet_vs_json_ratio
+    - Verifies Parquet is smallest format
+
+Tests:
+  tests/test_numpy_pandas.py:128 →  test_file_format_sizes
+
+
+────────────────────────────────────────────────────────────────────────────────
+MODULE 2: EMBEDDING MODELS
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: What Are Embeddings?
+---------------------------
+What it is:
+  An embedding is a fixed-length numerical vector that represents the meaning
+  of a piece of text. Two texts with similar meaning will produce vectors that
+  are close together in vector space (high cosine similarity). Embeddings are
+  the bridge between human language and mathematical operations — you cannot
+  do arithmetic on words, but you can on vectors.
+  The embedding model is a neural network trained on billions of (text, similar
+  text) pairs so that similar inputs produce similar output vectors.
+
+Real-world example:
+  When you type a question into Slack's search bar, Slack doesn't look for
+  exact keyword matches — it embeds your query and finds messages whose
+  embeddings are nearest in vector space. "Meeting tomorrow" and "sync
+  scheduled for Wednesday" will have similar embeddings even though they share
+  no words. This is how every modern search engine and chatbot retrieves
+  relevant context.
+
+Code link:
+  src/day2/embeddings.py:27   →  EmbeddingModelSpec dataclass
+    - Stores: name, dims, max_tokens, speed, quality, size_mb, multilingual
+  src/day2/embeddings.py:42   →  MODEL_CATALOGUE  (6 models from 384→3072 dims)
+  src/day2/embeddings.py:82   →  model_selection_guide()
+    - Decision tree: speed vs quality vs multilingual requirement
+
+
+TOPIC: Embedding Dimensions — 384 vs 768 vs 1024 vs 1536 vs 3072
+-----------------------------------------------------------------
+What it is:
+  The number of dimensions in an embedding vector determines how much
+  information it can encode. More dimensions = higher quality (the model has
+  more "rooms" to store different aspects of meaning) but also more memory,
+  slower search, and higher compute cost. The trade-off is quality vs latency
+  vs cost.
+
+  Dimension guide:
+    384  — all-MiniLM-L6-v2:         fast, free, good. Start here for dev.
+    768  — all-mpnet-base-v2:         production-grade English search.
+    1024 — BAAI/bge-large-en-v1.5:   MTEB top tier, high-quality RAG.
+    1536 — text-embedding-3-small:    OpenAI API, long context, best ROI.
+    3072 — text-embedding-3-large:    OpenAI API, best quality, highest cost.
+
+Real-world example:
+  Amdocs uses a 384-dim model for internal search (fast, free, runs on CPU).
+  JP Morgan Chase uses a 1536-dim OpenAI model for their analyst Q&A system
+  (higher quality required, budget available, latency acceptable at ~100ms).
+  Choose dimensions based on your SLA and budget, not just quality.
+
+Code link:
+  src/day2/embeddings.py:42   →  MODEL_CATALOGUE  (all 6 specs defined)
+  src/day2/embeddings.py:82   →  model_selection_guide(speed_priority, multilingual)
+  notebooks/02_embeddings.ipynb  →  Cell nb02_dims  (bar chart + scatter plot)
+
+
+TOPIC: EmbeddingEncoder — Generating Embeddings with sentence-transformers
+--------------------------------------------------------------------------
+What it is:
+  sentence-transformers is a Python library that wraps Hugging Face transformer
+  models and exposes a simple .encode(texts) API. Input: list of strings.
+  Output: (n, dims) NumPy array of L2-normalised vectors. The same model must
+  be used for both indexing (encoding documents) and querying (encoding the
+  user question) — otherwise the vector spaces will not align.
+  Lazy loading: the model is downloaded once (~90 MB) and cached on disk.
+
+Real-world example:
+  In a Databricks RAG pipeline at Hexaware, documents are encoded nightly
+  during the indexing job. At query time, the user's question is encoded by
+  the same model in real time. Both vectors go into ChromaDB and cosine
+  similarity finds the most relevant documents. The call is the same:
+  model.encode(["your question here"]).
+
+Code link:
+  src/day2/embeddings.py:123  →  EmbeddingEncoder class
+    - __init__: lazy model loading via @property
+    - encode():  calls model.encode(texts, normalize_embeddings=normalize)
+    - similarity(): encodes two texts and returns cosine similarity
+    - top_k_similar(): finds top-k most similar texts from a corpus
+  notebooks/02_embeddings.ipynb  →  Cell nb02_encode  (end-to-end encode demo)
+
+Tests:
+  tests/test_embeddings.py:1  →  all 19 tests use mock_embed() (no download)
+  tests/conftest.py:1         →  mock_embed fixture (reproducible random vecs)
+
+
+TOPIC: Dense vs Sparse Vectors
+-------------------------------
+What it is:
+  Sparse vectors (TF-IDF, BM25): vocabulary-sized (50,000+ dims), mostly zeros.
+  Only the words present in the document get non-zero values. Fast to compute,
+  interpretable, but "dog" and "canine" are completely unrelated — no shared
+  vocabulary index.
+
+  Dense vectors (sentence-transformers, BERT, OpenAI): low-dimensional
+  (384–3072), all non-zero. Trained on meaning. "dog" and "canine" produce
+  similar dense vectors because they appear in similar sentence contexts during
+  training.
+
+  Best practice: hybrid search — combine both. Sparse catches exact keywords
+  (product codes, IDs). Dense catches paraphrased questions and synonyms.
+
+Real-world example:
+  Weaviate (used by Shell for document search) supports hybrid search natively:
+  BM25 sparse score + dense semantic score, fused via Reciprocal Rank Fusion.
+  Searching for "API key rotation policy" returns documents about "credential
+  renewal procedures" (semantic match) AND the literal "API key" docs (sparse
+  exact match).
+
+Code link:
+  src/day2/embeddings.py:194  →  dense_vs_sparse_comparison(texts)
+    - Fits TfidfVectorizer on 6 sentences → shows sparsity (~95% zeros)
+    - Encodes same sentences with all-MiniLM-L6-v2 → shows dense shape
+    - Returns semantic_gap_example: cosine sim between "dog" and "canine"
+      sentences for both approaches
+
+Tests:
+  tests/test_embeddings.py:60  →  test_dense_sparse_keys / test_sparse_sparsity
+
+
+────────────────────────────────────────────────────────────────────────────────
+MODULE 3: VECTOR STORE & HNSW
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: Why Vector Databases?
+-----------------------------
+What it is:
+  Traditional databases answer exact queries: WHERE price < 100.
+  Vector databases answer similarity queries: "Find the 5 most similar
+  vectors to this query vector." The core operation is approximate
+  nearest-neighbour (ANN) search in high-dimensional space.
+  They store embedding vectors alongside metadata, support filtering
+  (WHERE topic = 'finance'), and return results ranked by similarity score.
+
+Real-world example:
+  When you ask a RAG chatbot at Persistent Systems "What is our leave policy?",
+  the system converts your question to a vector, then queries a vector database
+  of all HR policy chunks to find the 3 most relevant paragraphs. Without a
+  vector database, you'd scan all 50,000 paragraphs on every query.
+
+Code link:
+  src/day2/vector_store.py:159  →  ChromaVectorStore class
+    - Uses ChromaDB (in-memory, zero config — perfect for dev/teaching)
+    - add_documents(): embeds and stores in batches of 100
+    - search(): cosine similarity search, returns top-n with scores
+    - get_all_ids(): lists all stored document IDs
+  notebooks/03_vector_search.ipynb  →  Cell nb03_why  (vector DB comparison table)
+
+
+TOPIC: Distance Metrics — Cosine, Euclidean, Dot Product
+---------------------------------------------------------
+What it is:
+  Cosine similarity: measures the ANGLE between two vectors. Ignores magnitude.
+  Value ranges from -1 (opposite) to 1 (identical direction). Best for text
+  embeddings because "cat" and "cats" (different lengths/frequencies) still
+  point in the same direction.
+
+  Euclidean distance: straight-line distance in vector space. Sensitive to
+  magnitude. Two vectors can be far apart even if they point the same direction
+  if one is much longer.
+
+  Dot product: cosine × magnitude. Rewards both direction AND vector length.
+  Used when you want frequently-occurring (prominent) documents to rank higher.
+
+  Rule: always L2-normalise embeddings first. Then cosine = dot product.
+
+Real-world example:
+  Databricks Vector Search uses cosine distance by default for semantic search.
+  Pinecone lets you choose per-index. Weaviate uses cosine for BERT-family
+  models and dot product for cross-encoder re-rankers.
+
+Code link:
+  src/day2/vector_store.py:51   →  distance_metrics_demo()
+    - Defines 4 test vectors: similar, orthogonal, same direction, 2x magnitude
+    - Computes cosine / euclidean / dot_product for every pair
+    - Returns dict showing key insight: cosine=1.0 for same-direction vectors
+      even when magnitudes differ; euclidean > 0 for same pair
+  notebooks/03_vector_search.ipynb  →  Cell nb03_distance_viz  (bar chart)
+
+Tests:
+  tests/test_vector_store.py:1   →  test_cosine_same_dir / test_euclidean_same
+
+
+TOPIC: HNSW — Hierarchical Navigable Small World
+-------------------------------------------------
+What it is:
+  Brute-force nearest-neighbour: compare query to every vector → O(N).
+  At 1 million documents with 384-dim vectors, that's 384 million multiply-adds
+  per query — too slow.
+
+  HNSW solves this with a multi-layer graph structure:
+  - Layer 0:        ALL vectors, short-range connections (local neighbourhood)
+  - Higher layers:  progressively fewer vectors, long-range "highway" connections
+  - Search:         enter top layer, greedily move toward query, descend layers
+  - Result:         approximate nearest neighbours in O(log N)
+
+  Key parameters:
+    M               — number of bi-directional links per node (higher = better
+                      recall but more memory and slower build)
+    ef_construction — search width during index build (higher = better quality)
+    ef_search       — search width at query time (tune upward if recall < 95%)
+
+Real-world example:
+  Pinecone, Weaviate, ChromaDB, pgvector, and Databricks Vector Search all use
+  HNSW (or a variant) as their core indexing algorithm. A Databricks index at
+  Walmart with 100 million product descriptions uses HNSW with M=16 to serve
+  sub-10ms similarity queries across the entire catalogue.
+
+Code link:
+  src/day2/vector_store.py:114  →  HNSWConfig dataclass
+    - Fields: M, ef_construction, ef_search
+    - recall_estimate(): returns qualitative recall tier based on ef_search
+  notebooks/03_vector_search.ipynb  →  Cell nb03_hnsw  (config comparison table)
+
+Tests:
+  tests/test_vector_store.py:30  →  test_hnsw_recall_tiers
+
+
+TOPIC: ChromaDB — Building a 100+ Document Index
+-------------------------------------------------
+What it is:
+  ChromaDB is an open-source, embeddable vector database. In-memory mode
+  requires zero configuration and zero API keys. It handles: embedding
+  generation (or accepts pre-computed vectors), HNSW indexing, metadata
+  storage, and filtered search — all in one library. Production systems
+  use Databricks Vector Search or Pinecone instead; ChromaDB is ideal for
+  development, teaching, and prototyping.
+
+Real-world example:
+  A developer at CES IT prototyping a knowledge-base chatbot uses ChromaDB
+  locally to iterate quickly. Once the RAG pipeline is validated, they swap
+  ChromaDB for Databricks Vector Search by replacing the store class — the
+  pipeline code above and below doesn't change.
+
+Code link:
+  src/day2/vector_store.py:159  →  ChromaVectorStore class
+    - add_documents():  batches in groups of 100, auto-generates IDs
+    - search():         optional where= dict for metadata filtering
+    - count():          returns total indexed documents
+  src/day2/vector_store.py:313  →  generate_corpus(n=120)
+    - Creates 120 synthetic documents across 6 topics: ml, nlp, vectors,
+      rag, databricks, data_engineering
+    - Each doc has topic and priority metadata for filter demos
+  src/day2/vector_store.py:379  →  validate_index()
+    - Checks: count_ok, duplicate_ids, retrieval_ok, sample_score
+  notebooks/03_vector_search.ipynb  →  Cell nb03_index / nb03_validate
+
+Tests:
+  tests/test_vector_store.py:40  →  test_store_add / test_store_search /
+                                    test_store_filter / test_validate_index
+
+
+TOPIC: Semantic Search vs Keyword Search
+----------------------------------------
+What it is:
+  Keyword search (TF-IDF / BM25): matches exact tokens. If a document says
+  "canine" and the query says "dog", it returns no match.
+
+  Semantic search: embeds both query and documents, finds nearest vectors.
+  "canine" and "dog" produce similar embeddings → high similarity score.
+
+  Neither always wins:
+    Keyword search is better for: exact product IDs, technical acronyms,
+      regulatory codes, proper nouns with unique spellings.
+    Semantic search is better for: paraphrased questions, synonym mapping,
+      multilingual queries, conceptual similarity.
+
+  Best practice: hybrid search — run both, fuse scores (Reciprocal Rank
+  Fusion). Azure AI Search, Weaviate, and Databricks Vector Search all support
+  this natively.
+
+Real-world example:
+  At Epsilon (a marketing analytics firm), searching for "GDPR opt-out
+  procedure" should match both the exact policy document titled "GDPR Opt-Out"
+  (keyword match) AND a procedure labelled "Data Subject Deletion Request"
+  (semantic match — same meaning, different words). Hybrid search catches both.
+
+Code link:
+  src/day2/vector_store.py:256  →  KeywordSearch class  (TF-IDF backend)
+  src/day2/vector_store.py:279  →  semantic_vs_keyword_demo()
+    - Runs 3 test queries where the approaches give different results
+    - Shows: canine/dog (semantic wins), HNSW acronym (keyword wins)
+  notebooks/03_vector_search.ipynb  →  Cell nb03_sem_vs_kw  (side-by-side)
+
+Tests:
+  tests/test_vector_store.py:90  →  test_keyword_search / test_semantic_search
+
+
+────────────────────────────────────────────────────────────────────────────────
+MODULE 4: RAG PIPELINE, LANGSMITH TRACING & RAGAS EVALUATION
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: RAG Architecture — Retrieval Augmented Generation
+---------------------------------------------------------
+What it is:
+  RAG solves two fundamental LLM problems:
+  1. Knowledge cutoff: the model was trained on data up to a certain date and
+     knows nothing about events or documents after that.
+  2. Hallucination: the model generates plausible-sounding but incorrect answers
+     when it doesn't know something.
+
+  RAG fixes this by retrieving relevant real documents at query time and
+  injecting them into the LLM's context window as grounding evidence.
+
+  Two phases:
+  INDEXING (offline, run once):
+    Load documents → Chunk into segments → Embed each chunk → Store in vector DB
+
+  QUERYING (real-time, per request):
+    Embed question → Retrieve top-k chunks → Build prompt with chunks + question
+    → Call LLM → Return answer with source citations
+
+Real-world example:
+  JP Morgan's internal research assistant uses RAG over 10,000 analyst reports.
+  An analyst asks: "What are the risks in the semiconductor sector?"  The system
+  retrieves the 3 most relevant report sections (from last week, not from the
+  model's training data), feeds them as context, and the LLM synthesises a
+  grounded answer. Without RAG, the LLM would hallucinate outdated information.
+
+Code link:
+  src/day2/rag.py:64   →  Document / RetrievedChunk / RAGResult dataclasses
+  src/day2/rag.py:266  →  RAGPipeline class
+    - index(documents): chunks → embeds → stores in ChromaVectorStore
+    - query(question):  embed query → retrieve → build prompt → call LLM
+    - Returns RAGResult with answer, retrieved_chunks, latency_ms, trace_id
+  notebooks/04_rag_tracing_eval.ipynb  →  Cell nb04_rag_arch_code
+
+
+TOPIC: Document Chunking — Sliding Window
+-----------------------------------------
+What it is:
+  LLMs and embedding models have a maximum input length (context window). A
+  100-page PDF cannot be embedded as a single vector — it must be split into
+  chunks. The sliding window approach: take chunk_size words, then move forward
+  by (chunk_size - overlap) words for the next chunk. Overlap ensures that
+  sentences on chunk boundaries are not lost — they appear in both the previous
+  and next chunk, so retrieval always captures complete context.
+
+  chunk_size = 200 words, overlap = 40 words means each chunk shares 40 words
+  with the next chunk, preventing context from being split mid-sentence.
+
+Real-world example:
+  At Shell, maintenance manuals are split into 200-word chunks with 40-word
+  overlap before indexing into Databricks Vector Search. A technician asking
+  "What is the procedure for valve inspection?" retrieves the exact chunk
+  containing the procedure, even if the procedure spans two original pages.
+
+Code link:
+  src/day2/rag.py:119  →  chunk_document(text, chunk_size=200, overlap=40)
+    - Splits on whitespace into words
+    - Slides window: words[i : i+chunk_size] with step = chunk_size - overlap
+    - Returns list of Document objects
+  src/day2/rag.py:148  →  chunk_corpus(documents, **kwargs)
+    - Applies chunk_document to a list of Documents, preserves metadata
+
+Tests:
+  tests/test_numpy_pandas.py  →  (chunking tested as part of RAG pipeline tests)
+  notebooks/04_rag_tracing_eval.ipynb  →  Cell nb04_rag_arch_code  (live demo)
+
+
+TOPIC: LLM Observability — LangSmith Tracing
+--------------------------------------------
+What it is:
+  Without tracing, when a RAG pipeline returns a wrong answer, you have no way
+  to debug: What context was retrieved? What prompt was sent? How long did it
+  take? LangSmith captures every LLM call as a trace: input, output, latency,
+  token count, retrieved chunks, and model metadata.
+  Works in two modes:
+    Cloud mode: sends traces to app.langsmith.com (requires LANGCHAIN_API_KEY)
+    Local mode:  saves traces to a JSON file (works offline, no API key)
+
+Real-world example:
+  An AI team at Tredence deploys a RAG chatbot. After complaints of wrong
+  answers, they filter LangSmith traces by low faithfulness score and review
+  the full context that was retrieved for those queries. They discover the
+  chunking strategy was splitting procedure steps across chunks, losing context.
+  They fix chunking → faithfulness improves. Without traces, they couldn't
+  diagnose the problem.
+
+Code link:
+  src/day2/rag.py:186  →  LangSmithTracer class
+    - log_rag_call(): records query, context, answer, latency, metadata
+    - get_local_traces(): loads from langsmith_traces.json
+    - save_local_traces(): persists trace buffer to disk
+    - Falls back to local JSON when LANGCHAIN_API_KEY is not set
+  notebooks/04_rag_tracing_eval.ipynb  →  Cell nb04_langsmith
+
+Tests:
+  tests/test_pipeline.py  →  tracer tested within RAGPipeline integration tests
+
+
+TOPIC: RAGAS Evaluation Metrics
+--------------------------------
+What it is:
+  RAGAS (Retrieval Augmented Generation Assessment) defines 4 metrics to
+  quantify RAG pipeline quality — all scored 0.0 to 1.0:
+
+  Faithfulness:        Is the answer fully supported by the retrieved context?
+                       If the answer contains claims not in the context, score is low.
+                       (Catches hallucination even when retrieval was correct.)
+
+  Answer Relevancy:    Does the answer directly address the question asked?
+                       A complete but off-topic answer scores low.
+
+  Context Precision:   Of the top-k retrieved chunks, what fraction were actually
+                       relevant? High precision = low noise in retrieved context.
+
+  Context Recall:      Were all the relevant chunks retrieved?
+                       Missing important context = low recall.
+
+  Proxy metrics (no API key needed): TF-IDF cosine similarity and word overlap
+  approximate the real metrics for fast local development.
+  Real metrics: use GPT-4 or Claude as a judge (requires API key).
+
+Real-world example:
+  At Hexaware, the RAG pipeline baseline is recorded before any model changes.
+  Every sprint, the team runs the RAGAS evaluation suite against the same
+  question set. A new embedding model is only merged if it improves
+  faithfulness > 0.02 without degrading context recall. This makes model
+  upgrades data-driven, not opinion-driven.
+
+Code link:
+  src/day2/rag.py:98   →  RAGEvalResult dataclass  (4 metric fields + average)
+  src/day2/rag.py:346  →  ragas_proxy_metrics(result, ground_truth)
+    - faithfulness:       TF-IDF similarity(answer, context)
+    - answer_relevancy:   word overlap(answer, question)
+    - context_precision:  average chunk retrieval scores
+    - context_recall:     word overlap(context, ground_truth)
+  src/day2/rag.py:406  →  real_ragas_evaluation()  (requires OPENAI_API_KEY)
+  src/day2/rag.py:453  →  record_baseline()  (saves JSON with mean/std per metric)
+  notebooks/04_rag_tracing_eval.ipynb  →  Cell nb04_ragas / nb04_ragas_viz
+
+Tests:
+  tests/test_pipeline.py  →  test_ragas_proxy_metrics / test_baseline_saved
+
+
+TOPIC: Reproducible Evaluation Baseline
+----------------------------------------
+What it is:
+  A baseline is the starting measurement you compare all future changes against.
+  It is only useful if it is reproducible: the same inputs must produce the
+  same scores every time. Requirements: fix numpy random seed, pin the model
+  name, pin the evaluation question set, save results to a versioned JSON file.
+  Then every model swap, chunking change, or prompt edit is evaluated by
+  comparing to the baseline — a clear pass/fail signal.
+
+Real-world example:
+  At Databricks (US), the RAG team records a baseline evaluation before every
+  quarterly model upgrade. The baseline JSON is committed to git alongside the
+  code. When the new model is deployed, the RAGAS scores are compared to the
+  committed baseline in CI — if faithfulness drops more than 0.05, the PR
+  is blocked automatically.
+
+Code link:
+  src/day2/rag.py:453  →  record_baseline(eval_results, model_name, output_path)
+    - Computes mean / std / min / max for each RAGAS metric
+    - Writes rag_baseline.json with model, timestamp, question count, metrics
+  notebooks/04_rag_tracing_eval.ipynb  →  Cell nb04_repro
+    - run_reproducible_eval() wrapper with np.random.seed(42)
+    - Runs twice and asserts identical results
+
+
+────────────────────────────────────────────────────────────────────────────────
+MODULE 5: DATA PIPELINES, ETL/ELT, DAGs & DATA QUALITY
+────────────────────────────────────────────────────────────────────────────────
+
+TOPIC: ETL vs ELT — The Architecture Decision
+----------------------------------------------
+What it is:
+  ETL (Extract → Transform → Load): clean the data BEFORE loading it into the
+  warehouse. The transformation happens in application code (Python, Spark)
+  before the data enters the target system. Required when the target system
+  cannot handle raw/messy data (e.g., a strict relational database with
+  NOT NULL constraints).
+
+  ELT (Extract → Load → Transform): load raw data FIRST, then transform it
+  INSIDE the warehouse. Modern cloud warehouses (Databricks, Snowflake, BigQuery)
+  are powerful enough to run transformations at scale using SQL or Spark.
+  Key advantage: raw data is always preserved. If a transformation logic bug
+  is found later, you can re-run the transform without re-extracting from
+  the source system.
+
+Real-world example:
+  Walmart uses ELT for its e-commerce data lake:
+  - Raw clickstream events land in Bronze Delta tables (exactly as received)
+  - A Databricks job transforms them into Silver (cleaned, deduplicated, typed)
+  - A second job aggregates into Gold (daily revenue by product category)
+  If the Silver transformation logic is wrong, they reprocess from Bronze.
+  With ETL, they'd need to re-extract from the source systems.
+
+Code link:
+  src/day2/pipeline.py:49   →  PipelinePattern enum  (ETL / ELT)
+  src/day2/pipeline.py:64   →  extract_from_source(n=50)
+    - Simulates messy source data: amounts as strings "1,234.56" or "N/A"
+  src/day2/pipeline.py:87   →  etl_transform(records)
+    - Parses, validates, and types amounts BEFORE creating DataFrame
+  src/day2/pipeline.py:113  →  elt_load_raw(records)  →  Bronze DataFrame
+  src/day2/pipeline.py:128  →  elt_transform_in_warehouse(bronze_df) → Silver
+  notebooks/05_data_pipelines.ipynb  →  Cell nb05_etl (displays Bronze vs Silver)
+
+Tests:
+  tests/test_pipeline.py:1  →  test_extract / test_etl_transform / test_elt_*
+
+
+TOPIC: Medallion Architecture — Bronze, Silver, Gold
+-----------------------------------------------------
+What it is:
+  The Medallion Architecture is Databricks' recommended data organisation pattern:
+
+  Bronze:  Raw data, exactly as received from the source. No schema enforcement.
+           Preserves every byte, including errors and duplicates.
+           Purpose: audit trail, reprocessing from scratch.
+
+  Silver:  Cleaned, deduplicated, typed, validated. Nulls handled, formats
+           standardised. Ready for analysts and ML engineers to query.
+           Purpose: single source of truth for business logic.
+
+  Gold:    Aggregated, business-ready. KPIs, reports, ML feature tables.
+           Purpose: dashboards, model training, executive reporting.
+
+Real-world example:
+  At HPCL (an oil company), raw pipeline sensor readings land in Bronze every
+  second. A Databricks Delta Live Tables (DLT) pipeline runs continuously:
+  Bronze → Silver (remove null readings, convert timestamps, deduplicate) →
+  Gold (hourly average pressure per pipeline segment). The ML model for
+  anomaly detection trains on Gold. If a sensor starts sending corrupt data,
+  it's caught at the Bronze→Silver boundary before polluting the Gold table.
+
+Code link:
+  src/day2/pipeline.py:113  →  elt_load_raw()   → Bronze
+  src/day2/pipeline.py:128  →  elt_transform_in_warehouse()  → Silver
+  src/day2/pipeline.py:168  →  batch_processor(silver)  → Gold  (groupby agg)
+  notebooks/05_data_pipelines.ipynb  →  Cell nb05_medallion_viz  (Bronze/Silver/Gold bar chart)
+
+
+TOPIC: Batch vs Stream Processing
+----------------------------------
+What it is:
+  Batch processing: collect data over a period, then process all of it at once
+  on a schedule (hourly, daily, weekly). High throughput. Simple to implement.
+  Acceptable latency (minutes to hours). Best for: nightly model retraining,
+  end-of-day financial reports, data warehouse loads.
+
+  Stream processing: process each record (or micro-batch) as it arrives.
+  Low latency: milliseconds to seconds. More complex — requires stateful
+  computation (windowing: "average over the last 5 records") and handling
+  out-of-order events. Best for: fraud detection (can't wait until end of day),
+  live dashboards, IoT alerting, real-time recommendation updates.
+
+  Apache Spark Structured Streaming uses the same DataFrame API for both modes.
+  Switch from batch to stream by changing the source reader — the transformation
+  code stays the same.
+
+Real-world example:
+  At Fibe (a consumer lending fintech), batch processing retrains the credit
+  scoring model every night using all transactions from the day. Stream
+  processing monitors live transactions: if a customer does 5 cash withdrawals
+  in 10 minutes, a fraud alert fires within seconds — not after the nightly
+  batch job runs.
+
+Code link:
+  src/day2/pipeline.py:168  →  batch_processor(df)
+    - Pandas groupby → Gold aggregation (all rows processed at once)
+  src/day2/pipeline.py:187  →  stream_processor(record_stream, window_size=5)
+    - Python generator — yields one window summary per 5 records
+    - Returns: window_id, count, window_avg, window_min, window_max, total_processed
+  notebooks/05_data_pipelines.ipynb  →  Cell nb05_stream  (rolling average chart)
+
+Tests:
+  tests/test_pipeline.py  →  test_batch_processor / test_stream_processor
+
+
+TOPIC: DAG — Directed Acyclic Graph
+-------------------------------------
+What it is:
+  A DAG represents a pipeline as a graph where NODES are tasks and EDGES are
+  dependencies. "Directed" means A must complete before B. "Acyclic" means no
+  circular dependencies (A → B → A would create an infinite loop).
+
+  DAGs enable:
+  - Dependency-aware execution (tasks run only after all dependencies complete)
+  - Parallel execution (independent tasks run simultaneously)
+  - Retry logic (failed tasks restart without re-running completed tasks)
+  - Visual debugging (see exactly which task in the pipeline failed)
+
+  Topological sort (Kahn's algorithm) determines the correct execution order:
+  find all tasks with no dependencies, run them, remove them from the graph,
+  repeat until all tasks are run. If a cycle is detected, raise an error.
+
+  Production tools: Apache Airflow (most popular), Databricks Workflows
+  (drag-and-drop + YAML), dbt (DAG for SQL transforms, auto-resolves deps).
+
+Real-world example:
+  At Kohler, a Databricks Workflows DAG runs nightly:
+    Task 1: extract from SAP ERP (no dependencies)
+    Task 2: extract from Salesforce CRM (no dependencies — runs in parallel with Task 1)
+    Task 3: transform + join (depends on Task 1 AND Task 2)
+    Task 4: load to Gold table (depends on Task 3)
+    Task 5: trigger model retraining (depends on Task 4)
+  If Task 2 fails, Tasks 3/4/5 are blocked. Task 1 still succeeds and its
+  result is preserved for when Task 2 is retried.
+
+Code link:
+  src/day2/pipeline.py:241  →  Task dataclass  (name, fn, depends_on, description)
+  src/day2/pipeline.py:248  →  DAG class
+    - add_task():           registers tasks
+    - _topological_sort():  Kahn's algorithm for execution order
+    - run():                executes tasks in order, passes outputs as inputs
+  src/day2/pipeline.py:311  →  build_ingestion_dag(records)
+    - 4-task pipeline: extract → validate → transform → generate_report
+  notebooks/05_data_pipelines.ipynb  →  Cell nb05_dag / nb05_dag_custom
+
+Tests:
+  tests/test_pipeline.py  →  test_dag_run / test_dag_order / test_dag_cycle_detection
+
+
+TOPIC: PySpark — Distributed Data Processing
+---------------------------------------------
+What it is:
+  PySpark is the Python API for Apache Spark — a distributed computation
+  framework that runs across a cluster of machines. Where Pandas operates on
+  a single machine with ~100 million rows, Spark operates across hundreds of
+  machines with billions of rows.
+
+  Key concepts:
+  DataFrame:      distributed table, like Pandas but across a cluster
+  Transformation: lazy — .filter(), .groupBy(), .join() build a plan, not data
+  Action:         triggers execution — .show(), .count(), .collect(), .write()
+  Partition:      data is split into pieces; each partition processed on one node
+  Lazy evaluation: transformations are collected into an optimised execution plan
+                   and only executed when an action is called
+
+  On Databricks: Spark is pre-installed. Just write spark.read.table("...").
+  Databricks handles the cluster, auto-scaling, and optimisation.
+  This demo runs with local[*] (2 threads) to simulate the API locally.
+
+Real-world example:
+  At Volkswagen, a Databricks Spark job processes 5 billion telematics records
+  per day from connected vehicles. A single Pandas job would run for days.
+  Spark distributes the work across 50 nodes and finishes in 20 minutes.
+  The PySpark code looks almost identical to Pandas — just DataFrame operations.
+
+Code link:
+  src/day2/pipeline.py:365  →  pyspark_demo(df_pandas)
+    - Creates SparkSession with local[*] (or falls back gracefully if no Java)
+    - Converts Pandas DataFrame to Spark: spark.createDataFrame(df)
+    - Lazy transformation: .filter() → .groupBy() → .agg() → .orderBy()
+    - Action: .show() executes the plan
+    - Writes Parquet with partitioning
+  notebooks/05_data_pipelines.ipynb  →  Cell nb05_spark  (with fallback code shown)
+
+Tests:
+  tests/test_pipeline.py  →  test_pyspark_demo  (graceful skip if no Java)
+
+
+TOPIC: Data Quality Validation — pandera
+-----------------------------------------
+What it is:
+  Bad data causes bad models and wrong business decisions. The fix: validate
+  data at every pipeline boundary using a schema. pandera lets you define
+  Python schemas: column types, value ranges, nullability, uniqueness,
+  regex patterns, and custom checks.
+
+  Key features:
+  - DataFrameSchema: defines the contract for a DataFrame
+  - Column:          type + list of Check() rules
+  - lazy=True:       collects ALL validation errors before raising (not just first)
+  - ValidationReport: custom wrapper (pass/fail, error messages, pass rate)
+
+  When to validate:
+  - After Bronze load: catch missing columns, unexpected types
+  - After Silver transform: catch range violations, invalid categories
+  - Before Gold aggregation: catch duplicates that would double-count metrics
+
+Real-world example:
+  At Marsh McLennan (insurance), a pandera schema validates premium amounts
+  after every ETL run: must be positive, must not be NULL, must be below
+  $10M (a sanity cap). If a data entry error creates a $999M premium, the
+  validation fails before it reaches the pricing model — preventing a
+  catastrophic model prediction.
+
+Code link:
+  src/day2/data_quality.py:57   →  build_transaction_schema()
+    - Column("amount"):    Check.greater_than(0) + Check.less_than(1_000_000)
+    - Column("category"):  Check.isin(["retail","fintech","healthcare",...])
+    - Column("id"):        Check.str_matches(r"^TXN-\d+$")
+  src/day2/data_quality.py:172  →  validate_with_pandera(df, schema)
+    - lazy=True: catches all errors, not just the first
+    - Returns ValidationReport with pass/fail, error count, error messages
+  src/day2/data_quality.py:209  →  validate_completeness()  (NULL checks)
+  src/day2/data_quality.py:238  →  validate_uniqueness()    (duplicate key check)
+  src/day2/data_quality.py:263  →  validate_distribution()  (range + IQR outliers)
+  src/day2/data_quality.py:375  →  run_validation_suite(df)  (runs all checks)
+  notebooks/05_data_pipelines.ipynb  →  Cell nb05_quality_good / nb05_quality_bad
+
+Tests:
+  tests/test_pipeline.py  →  test_validate_completeness / test_validate_uniqueness /
+                              test_validate_distribution / test_suite_passes_clean /
+                              test_suite_fails_bad
+
+
+TOPIC: Great Expectations — Enterprise Data Quality
+----------------------------------------------------
+What it is:
+  Great Expectations (GE) extends pandera-style validation with enterprise
+  features for production pipelines and stakeholder reporting:
+
+  Expectation Suite:  a named, versioned collection of assertions stored in
+                      version control alongside your code
+  Data Docs:          auto-generated HTML reports showing pass/fail for every
+                      expectation — shareable with non-technical stakeholders
+  Checkpoints:        scheduled validation runs that produce results tracked
+                      over time (audit trail of data quality)
+  Profiling:          auto-suggest expectations based on data statistics
+
+  In Databricks, GE integrates with Delta Live Tables (DLT): expectations can
+  halt a pipeline on failure (quarantine bad data) or just warn (log but continue).
+
+  pandera vs Great Expectations:
+    pandera:  code-first, fast, great for in-pipeline validation in Python
+    GE:       config-first, generates reports, better for stakeholder visibility
+              and long-term data quality tracking across multiple pipelines
+
+Real-world example:
+  At Toshiba Software India, a GE checkpoint runs after every data ingestion job
+  for IoT device telemetry. If more than 5% of temperature readings are null
+  (sensor failure pattern), the checkpoint fails and pages the on-call engineer.
+  The HTML Data Docs report is emailed to the data governance team automatically.
+  Historical pass/fail trends are visible in the GE Data Docs portal.
+
+Code link:
+  src/day2/data_quality.py:323  →  great_expectations_concept()
+    - Returns a dict explaining core concepts, pandera vs GE comparison,
+      and common expectation types — conceptual overview, no GE install needed
+  notebooks/05_data_pipelines.ipynb  →  Cell nb05_ge  (full GE code example shown)
+    - Shows: context setup, ExpectationSuite creation, adding expectations,
+      running checkpoints, opening Data Docs in browser
+
+
+================================================================================
+  QUICK REFERENCE — FILES & ENTRY POINTS
+================================================================================
+
+  run_all.py              — Single command to run all 5 module demos end to end
+                            python run_all.py  (or: uv run python run_all.py)
+
+  src/day2/numpy_pandas.py   — Module 1: NumPy arrays, broadcasting, Pandas wrangling,
+                               groupby, merge, Parquet/CSV/JSON comparison
+  src/day2/embeddings.py     — Module 2: EmbeddingModelSpec, MODEL_CATALOGUE,
+                               EmbeddingEncoder, dense/sparse comparison
+  src/day2/vector_store.py   — Module 3: distance metrics, HNSWConfig, ChromaVectorStore,
+                               KeywordSearch, generate_corpus, validate_index
+  src/day2/rag.py            — Module 4: Document/RAGResult dataclasses, chunk_document,
+                               LangSmithTracer, RAGPipeline, ragas_proxy_metrics,
+                               record_baseline
+  src/day2/pipeline.py       — Module 5a: ETL/ELT, batch/stream, DAG, PySpark
+  src/day2/data_quality.py   — Module 5b: pandera schemas, ValidationReport,
+                               great_expectations_concept, run_validation_suite
+
+  tests/conftest.py          — mock_embed (no model download), sample_df, fixtures
+  tests/test_numpy_pandas.py — 21 tests covering all NumPy/Pandas functions
+  tests/test_embeddings.py   — 19 tests (all use mock_embed, CI-friendly)
+  tests/test_vector_store.py — 24 tests: ChromaDB, HNSW, distance metrics, search
+  tests/test_pipeline.py     — 28 tests: ETL/ELT, DAG, stream, quality, RAG
+
+  notebooks/01_numpy_pandas.ipynb   — Interactive NumPy/Pandas with visualisations
+  notebooks/02_embeddings.ipynb     — Embedding models, similarity heatmap, PCA viz
+  notebooks/03_vector_search.ipynb  — ChromaDB indexing, HNSW, semantic vs keyword
+  notebooks/04_rag_tracing_eval.ipynb — RAG pipeline, LangSmith, RAGAS evaluation
+  notebooks/05_data_pipelines.ipynb — ETL/ELT, batch/stream, DAG, PySpark, quality
+
+  .env.example               — Optional: LANGCHAIN_API_KEY, OPENAI_API_KEY
+                               Core demos work with NO API keys.
+
+
+================================================================================
+  TEST COMMANDS
+================================================================================
+
+  uv run pytest tests/ -v                        # all 92 tests
+  uv run pytest tests/test_numpy_pandas.py -v    # Module 1 only
+  uv run pytest tests/test_embeddings.py -v      # Module 2 only
+  uv run pytest tests/test_vector_store.py -v    # Module 3 only
+  uv run pytest tests/test_pipeline.py -v        # Modules 4 & 5 only
+  uv run pytest tests/ -v --tb=short -q          # compact output
+
+
+================================================================================
+  DEPENDENCY SUMMARY
+================================================================================
+
+  Core (always installed):
+    numpy, pandas, scikit-learn, chromadb, sentence-transformers, pandera
+
+  Optional (install as needed):
+    [langsmith]  — pip install langsmith python-dotenv
+    [ragas]      — pip install ragas openai
+    [spark]      — pip install pyspark  (also needs Java 11+)
+
+  All core demos work offline with zero API keys.
+  LangSmith falls back to local JSON. RAGAS falls back to proxy metrics.
+  PySpark falls back to a descriptive message if Java is unavailable.
+
+
+================================================================================
+  DATABRICKS INTEGRATION MAP
+================================================================================
+
+  Concept taught here           →  Databricks production equivalent
+  ─────────────────────────────────────────────────────────────────────────────
+  ChromaVectorStore             →  Databricks Vector Search
+  HNSWConfig                    →  Vector Search index configuration
+  ETL (Python transform)        →  Databricks Delta Live Tables (DLT)
+  ELT Bronze/Silver/Gold        →  Medallion Architecture on Delta Lake
+  batch_processor               →  Databricks Jobs (scheduled batch)
+  stream_processor              →  Spark Structured Streaming / DLT
+  DAG class                     →  Databricks Workflows (job orchestration)
+  pyspark_demo                  →  Databricks notebook / Spark cluster
+  pandera schema                →  DLT Expectations (halt / warn / drop)
+  Great Expectations            →  Databricks + GE integration
+  LangSmithTracer               →  MLflow tracing (Databricks-native)
+  record_baseline               →  MLflow Experiments tracking
+  RAGPipeline                   →  Databricks AI Playground / Model Serving
+
+
+================================================================================
+  END OF DAY 2 TOPICS REFERENCE
+================================================================================
