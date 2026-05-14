@@ -1,0 +1,114 @@
+PRODUCT CATALOG — TechStore India
+==================================
+
+PRODUCT ID: P001
+Name: Samsung Galaxy S24 Ultra
+Category: Smartphone
+Price: ₹1,29,999
+Description: The Galaxy S24 Ultra features a 6.8-inch Dynamic AMOLED display with 120Hz refresh rate. Powered by Snapdragon 8 Gen 3 processor with 12GB RAM and 256GB storage. Includes a built-in S Pen stylus for precision writing and drawing. Quad camera system: 200MP main, 12MP ultra-wide, 10MP telephoto (3x), 50MP telephoto (5x). 5000mAh battery with 45W fast charging. Titanium frame build. Ideal for professionals who need productivity and photography in one device.
+Tags: premium, android, s-pen, 5g, photography
+
+PRODUCT ID: P002
+Name: Apple iPhone 15 Pro Max
+Category: Smartphone
+Price: ₹1,59,900
+Description: iPhone 15 Pro Max features a 6.7-inch Super Retina XDR display with ProMotion 120Hz. Powered by the A17 Pro chip — the first 3nm chip in a smartphone. Titanium design makes it lighter and stronger than steel. 48MP main camera with 5x optical zoom. USB 3 speeds via USB-C connector. Action Button for customizable shortcuts. Up to 29 hours video playback. Supports satellite connectivity for emergencies. Best iPhone ever made, ideal for creative professionals and power users.
+Tags: premium, ios, titanium, 5g, a17pro
+
+PRODUCT ID: P003
+Name: OnePlus 12
+Category: Smartphone
+Price: ₹64,999
+Description: OnePlus 12 sports a 6.82-inch LTPO AMOLED display with 1-120Hz adaptive refresh. Powered by Snapdragon 8 Gen 3 with 12GB RAM. Hasselblad-tuned triple camera: 50MP main, 64MP telephoto (3x), 48MP ultra-wide. 5400mAh battery with 100W SUPERVOOC wired charging and 50W wireless. OxygenOS 14 based on Android 14. AlertSlider for quick silent/vibrate/ring switching. Great value flagship for power users who hate waiting for their phone to charge.
+Tags: flagship, android, fast-charging, hasselblad, 5g
+
+PRODUCT ID: P004
+Name: Sony WH-1000XM5
+Category: Headphones
+Price: ₹29,990
+Description: The WH-1000XM5 offers industry-leading active noise cancellation with 8 microphones and two processors. 30-hour battery life with quick charge (3 min charge = 3 hours playback). Multipoint connection to two devices simultaneously. LDAC support for high-resolution audio. Foldable design for portability. Speak-to-Chat automatically pauses music when you start talking. Perfect for frequent travellers and remote workers who need focus in noisy environments. Compatible with Google Assistant and Alexa.
+Tags: wireless, anc, premium-audio, travel, noise-cancellation
+
+PRODUCT ID: P005
+Name: Apple AirPods Pro (2nd Gen)
+Category: Headphones
+Price: ₹24,900
+Description: AirPods Pro 2 features Active Noise Cancellation that is 2x more powerful than the first generation. Adaptive Transparency mode lets in natural sound. Personalised Spatial Audio with dynamic head tracking. New H2 chip provides computational audio. Up to 6 hours listening with ANC on (30 hours total with case). Adaptive EQ tunes music in real time to your ear shape. MagSafe Charging Case with built-in speaker for Find My. Best-in-class wireless earbuds for iPhone users. Dust, sweat, and water resistant (IPX4).
+Tags: wireless, anc, apple-ecosystem, spatial-audio, h2chip
+
+PRODUCT ID: P006
+Name: Dell XPS 15 (2024)
+Category: Laptop
+Price: ₹1,89,990
+Description: Dell XPS 15 features a 15.6-inch OLED InfinityEdge display with 3.5K resolution. Powered by Intel Core Ultra 9 processor with NVIDIA GeForce RTX 4070 graphics. 32GB DDR5 RAM and 1TB NVMe SSD. Excellent keyboard with per-key RGB backlighting. Thunderbolt 4 ports for high-speed connectivity. 86Wh battery with up to 13 hours. Thin and light at 1.86kg. Best laptop for software developers, data scientists, and content creators who need power without sacrificing portability. Pre-loaded with Windows 11 Pro.
+Tags: premium-laptop, oled, rtx4070, developer, content-creation
+
+PRODUCT ID: P007
+Name: MacBook Pro 14-inch M3 Pro
+Category: Laptop
+Price: ₹1,99,900
+Description: MacBook Pro 14 with M3 Pro chip delivers exceptional performance for demanding professional workloads. 18GB unified memory with 512GB SSD. Liquid Retina XDR display with ProMotion up to 120Hz. Up to 18 hours battery life. MagSafe 3 charging. Three Thunderbolt 4 ports, HDMI 2.1, SD card reader. Excellent thermal management with fan system. The best laptop for ML engineers, video editors, and data scientists working with large datasets. Runs Databricks CLI and Python environments flawlessly.
+Tags: premium-laptop, apple-silicon, m3pro, machine-learning, long-battery
+
+PRODUCT ID: P008
+Name: Lenovo ThinkPad X1 Carbon Gen 12
+Category: Laptop
+Price: ₹1,45,000
+Description: ThinkPad X1 Carbon is the ultimate business laptop. Ultra-light at 1.12kg with a 14-inch IPS display (1920x1200). Intel Core Ultra 7 processor with Intel Iris Xe graphics. 16GB LPDDR5 RAM, 512GB SSD. MIL-SPEC tested for durability (military-grade). Excellent keyboard — best in the business laptop category. 57Wh battery with 65W USB-C charging. Four Thunderbolt 4 ports. WWAN optional (4G LTE). Perfect for travelling executives and consultants who need a reliable, lightweight work machine.
+Tags: business, ultralight, thinkpad, durable, mil-spec
+
+PRODUCT ID: P009
+Name: Samsung 65-inch Neo QLED 4K TV
+Category: Television
+Price: ₹1,89,990
+Description: Samsung Neo QLED uses Quantum Mini LEDs for precise local dimming with 2048 zones. 65-inch 4K display with 120Hz refresh rate. Quantum HDR 2000 with peak brightness of 2000 nits. Neural Quantum Processor 4K with AI upscaling. HDMI 2.1 for 4K@120fps gaming. Dolby Atmos and Object Tracking Sound. SmartThings integration for smart home control. The best TV for home cinema enthusiasts and serious gamers who want the brightest, most vivid picture quality available in 2024.
+Tags: premium-tv, neo-qled, gaming, 4k, smart-tv
+
+PRODUCT ID: P010
+Name: Sony Bravia XR 55-inch OLED
+Category: Television
+Price: ₹2,29,990
+Description: Sony Bravia XR OLED uses Cognitive Processor XR that processes like the human brain — cross-analysing data simultaneously. 55-inch OLED panel with perfect blacks and infinite contrast. XR OLED Contrast Pro for brighter highlights on OLED. Acoustic Surface Audio+ makes the entire screen vibrate to produce sound. Google TV with 700,000+ movies and shows. BRAVIA CORE for ultra-high-quality streaming. Perfect blacks make it ideal for dark room cinema viewing and HDR content. Also serves as a PlayStation 5 companion with HDMI 2.1.
+Tags: premium-tv, oled, google-tv, perfect-blacks, sony
+
+PRODUCT ID: P011
+Name: iPad Pro 12.9-inch M2
+Category: Tablet
+Price: ₹1,12,900
+Description: iPad Pro with M2 chip delivers laptop-class performance in a tablet. 12.9-inch Liquid Retina XDR display with ProMotion 120Hz. Apple Pencil (2nd gen) hover support — detect Pencil 12mm above screen. Wi-Fi 6E and optional 5G connectivity. Thunderbolt / USB 4 port for external displays and storage. Face ID works in any orientation. Magic Keyboard support makes it a laptop replacement. Best tablet for architects, designers, and anyone who takes detailed handwritten notes. Runs iPad OS 16 with Stage Manager for multitasking.
+Tags: tablet, m2-chip, apple-pencil, professional, creator
+
+PRODUCT ID: P012
+Name: Samsung Galaxy Tab S9 Ultra
+Category: Tablet
+Price: ₹1,08,999
+Description: Galaxy Tab S9 Ultra has the largest display in the Galaxy Tab lineup — a 14.6-inch Dynamic AMOLED 2X display with 120Hz. Comes with S Pen included (no extra cost). Snapdragon 8 Gen 2 processor with 12GB RAM. IP68 dust and water resistant. Dual front cameras (12MP wide + 12MP ultra-wide) for video calls. 11200mAh battery. Ideal for creative professionals, artists, and users who want an Android tablet that can replace a laptop. DeX mode for desktop-style multitasking.
+Tags: tablet, s-pen-included, amoled, android, large-screen
+
+PRODUCT ID: P013
+Name: Logitech MX Master 3S
+Category: Accessories
+Price: ₹9,995
+Description: The MX Master 3S is the best productivity mouse for professionals. MagSpeed electromagnetic scroll wheel that scrolls 1000 lines per second silently. 8000 DPI Darkfield sensor works on any surface including glass. Bluetooth or USB receiver (Logi Bolt) connectivity. Up to 70 days battery on a single charge. Ergonomic design reduces hand fatigue during long work sessions. Flow feature allows cursor to move between multiple computers. 7 customizable buttons. Works with Windows, Mac, Linux, iPad OS. Perfect for data engineers and developers.
+Tags: mouse, productivity, ergonomic, wireless, multi-device
+
+PRODUCT ID: P014
+Name: Keychron K8 Pro Mechanical Keyboard
+Category: Accessories
+Price: ₹8,500
+Description: Keychron K8 Pro is a tenkeyless wireless mechanical keyboard with hot-swappable switches. Available in Gateron G Pro Red (linear), Brown (tactile), Blue (clicky) switch options. RGB backlight with per-key customization via QMK/VIA firmware. Bluetooth 5.1 multi-device (up to 3 devices) or USB-C wired. Aluminium top frame for premium feel. 4000mAh battery. Mac and Windows layout included. Perfect for developers and writers who spend 8+ hours a day typing and want a satisfying, customizable typing experience.
+Tags: keyboard, mechanical, wireless, hot-swap, qmk
+
+PRODUCT ID: P015
+Name: Anker 737 Power Bank (PowerCore 24K)
+Category: Accessories
+Price: ₹6,999
+Description: The Anker 737 PowerCore 24K is a 24,000mAh power bank with 140W total output. Charges a MacBook Pro from 0 to 50% in 45 minutes via USB-C. USB-C port supports 140W output. Two USB-A ports for simultaneous charging. Smart digital display shows exact battery percentage and wattage in real time. Charges itself at 100W in just 1.5 hours. Ideal for data scientists and engineers who travel frequently and need to keep their laptop, tablet, and phone charged all day at client sites or conferences.
+Tags: power-bank, 140w, fast-charge, travel, anker
+
+PRODUCT ID: P016
+Name: ASUS ROG Zephyrus G14 (2024)
+Category: Laptop
+Price: ₹1,39,990
+Description: ROG Zephyrus G14 is the best gaming laptop under ₹1.5 lakh. AMD Ryzen 9 8945HS processor with AMD Radeon RX 7700S GPU. 32GB DDR5 RAM, 1TB PCIe 4.0 SSD. 14-inch ROG Nebula display with 144Hz refresh rate and QHD resolution. MUX Switch to bypass iGPU for better gaming performance. AniMe Matrix LED display on the lid for custom animations. Under 1.6kg weight. Excellent for gaming, 3D rendering, and ML model training on a budget.
+Tags: gaming-laptop, amd, 144hz, compact, value-flagship
