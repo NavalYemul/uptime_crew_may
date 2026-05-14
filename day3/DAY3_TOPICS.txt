@@ -1,0 +1,511 @@
+================================================================================
+DAY 3 — ADVANCED RAG: TOPICS REFERENCE
+================================================================================
+Course: Advanced RAG Pipelines
+Instructor: Naval Yemul, Data Master Consulting Pvt. Ltd.
+Date: May 2026
+================================================================================
+
+--------------------------------------------------------------------------------
+MODULE 1: CHUNKING STRATEGIES
+Source: src/day3/chunking.py
+Notebook: notebooks/01_chunking_strategies.ipynb
+--------------------------------------------------------------------------------
+
+Topic 1: Fixed-Size Chunking
+  What it is: Splits a document every N characters with an M-character overlap,
+  regardless of sentence or paragraph boundaries. Fast and simple to implement,
+  it guarantees predictable chunk sizes but may split mid-sentence or mid-price
+  (e.g., "₹24,900" becomes "₹24," + "900 AirPods" across two chunks).
+  Best for: quick prototyping and when document structure is irrelevant.
+
+  Real-world example: LTIMindtree used fixed-size chunking during a rapid POC
+  for an internal HR policy search tool — it was fast enough to demonstrate
+  retrieval quality in one sprint before committing to recursive chunking.
+
+  Code: src/day3/chunking.py — fixed_size_chunk()
+  Test: tests/test_chunking.py — test_fixed_size_basic, test_fixed_size_overlap
+
+---
+
+Topic 2: Recursive Character Splitting
+  What it is: Attempts to split on progressively smaller separators in order:
+  double newline (\n\n), single newline (\n), period-space (". "), then space.
+  This preserves paragraph and sentence boundaries wherever possible, making it
+  the best general-purpose strategy for heterogeneous document types.
+  Equivalent to LangChain's RecursiveCharacterTextSplitter.
+
+  Real-world example: Synechron's document intelligence team uses recursive
+  chunking on regulatory PDFs (Basel III, SEBI guidelines) because paragraphs
+  carry complete regulatory obligations — splitting mid-paragraph destroys
+  compliance context needed by the LLM.
+
+  Code: src/day3/chunking.py — recursive_chunk()
+  Test: tests/test_chunking.py — test_recursive_preserves_paragraphs
+
+---
+
+Topic 3: Character Chunking (Single Separator)
+  What it is: Splits exclusively on one separator — defaulting to double newline
+  (\n\n), so each chunk is exactly one paragraph. No further splitting is done
+  even if a paragraph exceeds the target size. Best suited for FAQ pages,
+  product catalogs, and structured markdown where each paragraph is already a
+  self-contained retrieval unit.
+
+  Real-world example: Crisil's research portal stores analyst notes as
+  structured markdown. Character chunking on \n\n preserves each insight as
+  a single chunk, so a retrieval query like "credit outlook India 2026" returns
+  whole analyst paragraphs rather than sentence fragments.
+
+  Code: src/day3/chunking.py — character_chunk()
+  Test: tests/test_chunking.py — test_character_chunk_separator
+
+---
+
+Topic 4: Semantic Chunking
+  What it is: Encodes each sentence into an embedding, then groups consecutive
+  sentences whose cosine similarity stays above a threshold into a single chunk.
+  A drop below the threshold signals a topic change and starts a new chunk.
+  Most accurate but requires an embedding model; falls back to recursive
+  chunking when no encoder is provided.
+
+  Real-world example: JP Morgan Chase's internal research assistant uses
+  semantic chunking on earnings call transcripts. A passage that shifts from
+  "revenue guidance" to "regulatory risk" creates a natural boundary — keeping
+  each topic in its own chunk dramatically improves recall for analyst queries.
+
+  Code: src/day3/chunking.py — semantic_chunk()
+  Test: tests/test_chunking.py — test_semantic_fallback, test_semantic_with_encoder
+
+---
+
+Topic 5: Metadata Extraction from Chunks
+  What it is: Inspects each chunk's text to extract structured metadata fields:
+  word count, presence of prices (has_price), presence of technical specs
+  (has_specs), source file name, and chunk index. This metadata is stored
+  alongside the chunk in ChromaDB or Databricks Vector Search and enables
+  pre-filtering before vector similarity search.
+
+  Real-world example: Shell's product document system attaches has_price and
+  category metadata to every chunk so that a query for "pump pricing India"
+  filters to price-containing chunks in the "equipment" category before running
+  vector search — reducing search space from 50,000 to ~200 chunks.
+
+  Code: src/day3/chunking.py — extract_metadata_from_chunk()
+  Test: tests/test_chunking.py — test_metadata_extraction_price, test_metadata_extraction_specs
+
+--------------------------------------------------------------------------------
+MODULE 2: HYBRID SEARCH
+Source: src/day3/hybrid_search.py
+Notebook: notebooks/02_hybrid_search.ipynb
+--------------------------------------------------------------------------------
+
+Topic 6: BM25 Keyword Search
+  What it is: BM25 (Best Match 25) is the probabilistic keyword ranking function
+  that underpins Elasticsearch and Solr. It extends TF-IDF with term frequency
+  saturation (a word appearing 20 times is not 20x better than appearing once)
+  and document length normalisation. It excels on exact technical terms like
+  model numbers, part codes, and specifications.
+
+  Real-world example: Amdocs customer support indexes millions of telecom
+  product documents. BM25 ensures that a query containing "SIM900A module"
+  returns exact model matches at rank 1, which dense-only retrieval often
+  misses when the model number is rare in the embedding training data.
+
+  Code: src/day3/hybrid_search.py — BM25Index, BM25Index.index(), BM25Index.search()
+  Test: tests/test_hybrid_search.py — test_bm25_exact_match, test_bm25_term_saturation
+
+---
+
+Topic 7: Dense Semantic Search
+  What it is: Dense retrieval encodes both documents and queries into
+  high-dimensional embedding vectors using a transformer model
+  (e.g., all-MiniLM-L6-v2 or BGE-large-en). Retrieval is nearest-neighbour
+  search by cosine similarity. It captures meaning and paraphrase, not just
+  word overlap — handling queries like "portable audio device" matching
+  documents about "wireless headphones".
+
+  Real-world example: Persistent Systems' internal knowledge base uses dense
+  retrieval to answer developer questions. A query like "how to handle token
+  expiry" correctly matches documents about "refresh token rotation strategy"
+  even though no query words appear in the document title.
+
+  Code: src/day3/hybrid_search.py — DenseIndex, DenseIndex.index(), DenseIndex.search()
+  Test: tests/test_hybrid_search.py — test_dense_semantic_match, test_dense_cosine_similarity
+
+---
+
+Topic 8: Reciprocal Rank Fusion (RRF)
+  What it is: RRF is a rank aggregation algorithm that merges multiple ranked
+  lists without requiring their scores to be on the same scale. The formula is:
+  score(d) = sum(1 / (k + rank_i(d))) where k=60 dampens the effect of top
+  ranks. Documents appearing in both BM25 and dense result lists receive
+  combined RRF scores, naturally surfacing documents that both methods agree on.
+
+  Real-world example: Walmart India's product search team compared score-based
+  and rank-based fusion. RRF outperformed linear interpolation on ambiguous
+  queries ("affordable premium sound") because BM25 and dense scores were on
+  incompatible scales, while rank positions are always comparable.
+
+  Code: src/day3/hybrid_search.py — reciprocal_rank_fusion()
+  Test: tests/test_hybrid_search.py — test_rrf_both_lists, test_rrf_single_list
+
+---
+
+Topic 9: HybridSearcher
+  What it is: Orchestrates BM25 and dense retrieval in parallel, fuses their
+  results with RRF, and exposes a unified search interface. The bm25_weight and
+  dense_weight parameters control how many candidates each method contributes
+  before fusion. A compare() method returns results from all three methods
+  side-by-side for analysis and debugging.
+
+  Real-world example: Landmark Group's e-commerce search team A/B tested
+  HybridSearcher against pure dense search. On category-browsing queries
+  ("wireless earbuds under 5000"), hybrid with RRF improved CTR by surfacing
+  exact price-range matches (BM25) alongside semantically relevant products
+  (dense) simultaneously.
+
+  Code: src/day3/hybrid_search.py — HybridSearcher, HybridSearcher.compare()
+  Test: tests/test_hybrid_search.py — test_hybrid_beats_individual, test_hybrid_compare
+
+--------------------------------------------------------------------------------
+MODULE 3: RERANKING & DIVERSITY
+Source: src/day3/reranking.py
+Notebook: notebooks/03_reranking_mmr.ipynb
+--------------------------------------------------------------------------------
+
+Topic 10: Cross-Encoder Reranking
+  What it is: Two-stage retrieval pattern where Stage 1 (bi-encoder) retrieves
+  50–100 fast candidates and Stage 2 (cross-encoder) processes each
+  (query, document) pair jointly through transformer self-attention to produce
+  a precise relevance score. Cross-encoders are 10–30x slower than bi-encoders
+  but significantly more accurate. The mock implementation uses Jaccard word
+  overlap to simulate cross-encoder scoring without model downloads.
+
+  Real-world example: Hexaware Technologies' legal document search uses
+  cross-encoder reranking on contract clauses. The bi-encoder retrieves 50
+  clauses matching "termination conditions" in milliseconds; the cross-encoder
+  then reranks to surface the 5 clauses that most precisely match the query
+  context, reducing lawyer review time per contract by 60%.
+
+  Code: src/day3/reranking.py — CrossEncoderReranker, rerank_mock(), rerank()
+  Test: tests/test_reranking.py — test_rerank_mock_changes_order, test_rerank_top_k
+
+---
+
+Topic 11: Maximal Marginal Relevance (MMR)
+  What it is: MMR selects documents iteratively, balancing relevance to the
+  query against diversity among already-selected documents. The formula is:
+  lambda * sim(query, doc) - (1-lambda) * max(sim(selected, doc)).
+  Lambda=1.0 gives pure relevance (may return near-duplicate chunks),
+  lambda=0.0 gives maximum diversity, lambda=0.5 is the recommended balance.
+
+  Real-world example: Tredence's market research assistant uses MMR to answer
+  "summarise recent competitor activity". Without MMR, the top 5 chunks were
+  all from the same competitor's Q3 report. With lambda=0.5, the system
+  surfaces one chunk each from five different competitors.
+
+  Code: src/day3/reranking.py — mmr_select()
+  Test: tests/test_reranking.py — test_mmr_diversity, test_mmr_pure_relevance
+
+---
+
+Topic 12: Metadata Filtering
+  What it is: Pre-filters a document collection by structured fields (category,
+  price range, date, tags) before running vector search. This narrows the
+  search space from the full corpus to a relevant subset — dramatically
+  improving both precision (fewer irrelevant results) and speed (fewer vectors
+  to compare). Supports equality filters and range filters (price_range).
+
+  Real-world example: Eclerx's procurement analytics system indexes 500,000
+  supplier documents across 20 categories. Metadata filtering by category and
+  country reduces the vector search space from 500K to ~2,500 documents per
+  query, cutting P99 latency from 8 seconds to 180ms.
+
+  Code: src/day3/reranking.py — metadata_filter()
+  Test: tests/test_reranking.py — test_metadata_filter_category, test_metadata_filter_price_range
+
+---
+
+Topic 13: Two-Stage Retrieval Pipeline
+  What it is: Chains metadata_filter -> DenseIndex -> CrossEncoderReranker into
+  a single callable returned by build_retrieval_pipeline(). This is the
+  production pattern for RAG systems that must respect business constraints
+  (category, price) while ranking by semantic relevance and refining with
+  cross-encoder accuracy.
+
+  Real-world example: HPCL's internal parts catalogue search chains filters
+  (equipment_type, plant_location) -> dense retrieval (semantic similarity on
+  specification text) -> cross-encoder reranking (precise query-part matching)
+  to recommend replacement parts to field engineers with 94% precision.
+
+  Code: src/day3/reranking.py — build_retrieval_pipeline()
+  Test: tests/test_reranking.py — test_pipeline_end_to_end, test_pipeline_with_filters
+
+--------------------------------------------------------------------------------
+MODULE 4: ADVANCED RAG PIPELINE
+Source: src/day3/rag_pipeline.py
+Notebook: notebooks/04_advanced_rag_pipeline.ipynb
+--------------------------------------------------------------------------------
+
+Topic 14: Semantic Caching
+  What it is: A query cache that matches by semantic similarity rather than
+  exact string equality. When a new query's embedding is within a cosine
+  similarity threshold (default 0.92) of a cached query's embedding, the cached
+  answer is returned without calling the LLM. Reduces LLM API costs by 40–70%
+  in production systems where users rephrase the same core questions.
+
+  Real-world example: Marsh McLennan's insurance Q&A assistant handles ~2,000
+  queries per day. After deploying semantic caching at threshold 0.90, 62% of
+  queries hit the cache (rephrased variations of common policy questions),
+  reducing Claude API spend by $800/month while maintaining answer quality.
+
+  Code: src/day3/rag_pipeline.py — SemanticCache, put(), get(), stats()
+  Test: tests/test_rag_pipeline.py — test_cache_exact_hit, test_cache_miss_threshold
+
+---
+
+Topic 15: LangSmith Tracing
+  What it is: Structured logging of every RAG call with query, retrieved
+  context, generated answer, latency, and custom metadata. Without a
+  LANGCHAIN_API_KEY it writes to a local in-memory store and can save to JSON.
+  With the API key, all traces appear at smith.langchain.com for visual
+  debugging, latency analysis, and regression detection.
+
+  Real-world example: Celebal Technologies' Databricks consulting team uses
+  LangSmith to debug retrieval failures in client RAG pipelines. When a
+  client reports "wrong answers on pricing questions", traces immediately show
+  whether the failure is in retrieval (wrong chunks fetched) or generation
+  (LLM ignored context), cutting debug time from hours to minutes.
+
+  Code: src/day3/rag_pipeline.py — LangSmithTracer, log_rag_call(), get_traces(), save_traces()
+  Test: tests/test_rag_pipeline.py — test_tracer_logs_call, test_tracer_save_load
+
+---
+
+Topic 16: AdvancedRAGPipeline (end-to-end)
+  What it is: Integrates SemanticCache + HybridSearcher (BM25 + dense + RRF) +
+  CrossEncoderReranker + LangSmithTracer + LLM call into a single query()
+  method. Returns AdvancedRAGResult with answer, retrieval_method,
+  num_retrieved, num_reranked, cache_hit, latency_ms, and faithfulness_proxy.
+  build_product_rag() is the one-line factory that wires all components.
+
+  Real-world example: Data Master Consulting delivered this exact architecture
+  to a pharma client (Gynosis) for their drug information assistant. The
+  pipeline handles 500 queries/day with <2s P95 latency, 78% cache hit rate,
+  and 0.91 average faithfulness on their golden dataset of 150 QA pairs.
+
+  Code: src/day3/rag_pipeline.py — AdvancedRAGPipeline, build_product_rag(), query()
+  Test: tests/test_rag_pipeline.py — test_full_pipeline_query, test_pipeline_cache_hit
+
+--------------------------------------------------------------------------------
+MODULE 5: RAGAS EVALUATION
+Source: src/day3/evaluation.py
+Notebook: notebooks/05_ragas_langsmith.ipynb
+--------------------------------------------------------------------------------
+
+Topic 17: Golden Dataset & QA Pairs
+  What it is: A curated set of 10 QAPair objects (question, ground_truth,
+  category) that represent the most important query types the RAG system must
+  handle correctly. Each pair is manually verified by a domain expert.
+  The golden dataset is the source of truth for all evaluation runs and A/B
+  tests — it must be version-controlled alongside the pipeline code.
+
+  Real-world example: NCR Voyix's ATM support chatbot has a 75-question golden
+  dataset covering hardware faults, software errors, and maintenance procedures.
+  Every pipeline change is gated by this dataset — a PR cannot merge if
+  faithfulness drops below 0.85 on the golden set.
+
+  Code: src/day3/evaluation.py — QAPair, GOLDEN_DATASET (10 QAPairs)
+  Test: tests/test_evaluation.py — test_golden_dataset_structure, test_qa_pair_fields
+
+---
+
+Topic 18: RAGAS Proxy Metrics
+  What it is: Four proxy metrics computed without an LLM judge, using word
+  overlap and cosine similarity heuristics. Faithfulness: fraction of answer
+  tokens present in context. Answer Relevancy: cosine similarity of question
+  and answer word sets. Context Precision: answer token overlap with context.
+  Context Recall: ground truth overlap with context. Production RAGAS replaces
+  these proxies with GPT-4 scoring for higher accuracy.
+
+  Real-world example: PerformRx's formulary management team runs nightly RAGAS
+  evaluations on their drug coverage assistant. Proxy metrics flag regressions
+  within 6 hours of a pipeline change — before any user reports — because
+  faithfulness below 0.80 correlates strongly with pharmacist complaints about
+  incorrect coverage statements.
+
+  Code: src/day3/evaluation.py — compute_ragas_proxy(), EvalResult
+  Test: tests/test_evaluation.py — test_ragas_perfect_score, test_ragas_low_faithfulness
+
+---
+
+Topic 19: RAGEvaluator & Baseline
+  What it is: RAGEvaluator wraps the pipeline with run(), summary(), and
+  failing_questions() methods. run() processes all golden questions and returns
+  EvalResult objects. summary() computes mean/std/min/max for each metric and
+  the overall pass rate (faithfulness >= 0.85 AND answer_relevancy >= 0.70).
+  save_baseline() persists summary stats to JSON for regression comparisons.
+
+  Real-world example: Volkswagen India's dealer knowledge assistant commits a
+  new baseline JSON to Git with every sprint. The CI pipeline runs RAGEvaluator
+  on every PR and blocks merge if the overall pass rate drops more than 3
+  percentage points below the committed baseline.
+
+  Code: src/day3/evaluation.py — RAGEvaluator, run(), summary(), save_baseline()
+  Test: tests/test_evaluation.py — test_evaluator_run, test_evaluator_summary_keys
+
+---
+
+Topic 20: A/B Testing RAG Variants
+  What it is: ab_test() runs two pipeline configurations on the same golden
+  questions, computes per-metric summary statistics for each, and determines
+  metric-level and overall winners. Returns a dict with both summaries and a
+  metric_winners breakdown. Enables data-driven decisions: "does adding BM25
+  to dense-only actually improve faithfulness?"
+
+  Real-world example: Smoothstack's AI team A/B tested chunk size (400 vs 800
+  chars) on their training material assistant. The ab_test() function showed
+  that 800-char chunks improved context_recall by 0.08 but reduced
+  context_precision by 0.05 — they chose 600 chars as the balanced compromise.
+
+  Code: src/day3/evaluation.py — ab_test(), chunking_ablation()
+  Test: tests/test_evaluation.py — test_ab_test_winner, test_ab_test_structure
+
+--------------------------------------------------------------------------------
+MODULE 6: AIRFLOW SCHEDULING
+Source: src/day3/airflow_demo.py
+Notebook: notebooks/06_airflow_scheduling.ipynb
+--------------------------------------------------------------------------------
+
+Topic 21: Idempotency Pattern
+  What it is: A pipeline task is idempotent if running it twice with the same
+  input produces the same output and has no additional side effects. Each task
+  checks whether its output (keyed by execution_date) already exists before
+  processing; if it does, the existing output is returned unchanged. This is
+  critical for safe re-runs after failures without data duplication.
+
+  Real-world example: Sony India's content ingestion pipeline failed mid-run
+  after an OOM error. Because all tasks were idempotent, re-triggering the DAG
+  for the same execution date skipped completed tasks and resumed from the
+  failed step — no duplicate chunks were created in the vector index.
+
+  Code: src/day3/airflow_demo.py — extract_products(), chunk_and_embed(), index_to_vectorstore()
+  Test: tests/test_airflow_demo.py — test_idempotent_extract, test_idempotent_chunk
+
+---
+
+Topic 22: SimpleDAGRunner (Topological Sort)
+  What it is: A lightweight Airflow simulator that accepts tasks with explicit
+  depends_on lists, performs a topological sort to determine execution order,
+  and passes each task's output as context to its dependents. Returns a list of
+  TaskResult objects with task_id, status, output, and duration_s. Allows
+  students to understand Airflow's execution model without installing Airflow.
+
+  Real-world example: During a Data Master training for Toshiba Software India,
+  students built their own SimpleDAGRunner-based ingestion pipeline in a 2-hour
+  lab session — understanding the dependency model before moving to the
+  Databricks Workflows equivalent on Day 4.
+
+  Code: src/day3/airflow_demo.py — SimpleDAGRunner, add_task(), run()
+  Test: tests/test_airflow_demo.py — test_dag_runner_order, test_dag_runner_results
+
+---
+
+Topic 23: Apache Airflow DAG & Operators
+  What it is: An Airflow DAG is a Python file that defines tasks using
+  Operators (PythonOperator, BashOperator, etc.) and task dependencies using
+  the >> bit-shift syntax: extract >> chunk >> index. The DAG is picked up by
+  the Airflow scheduler and executed on the configured schedule. show_airflow_code()
+  prints the real DAG Python file that would be deployed to an Airflow cluster.
+
+  Real-world example: Epsilon India's customer data platform uses a 12-task
+  Airflow DAG to orchestrate nightly ETL, embedding generation, and vector
+  index sync. The >> dependency syntax makes the pipeline topology readable in
+  code review — new engineers understand the flow in minutes.
+
+  Code: src/day3/airflow_demo.py — show_airflow_code(), try_real_airflow(), create_rag_ingestion_dag_definition()
+  Test: tests/test_airflow_demo.py — test_dag_definition_structure, test_show_airflow_code
+
+---
+
+Topic 24: Cron Scheduling
+  What it is: Cron is the standard 5-field schedule expression used by Airflow,
+  Databricks Workflows, Linux crontab, and all major cloud schedulers.
+  Format: minute hour day-of-month month day-of-week. Special strings like
+  @daily and @hourly are syntactic sugar. Understanding cron is essential for
+  configuring automated re-indexing pipelines in production.
+
+  Real-world example: Fibe's financial data assistant re-indexes product
+  eligibility documents at "0 1 * * *" (1 AM IST daily) to reflect overnight
+  RBI policy updates. The 1 AM schedule ensures fresh data is available when
+  loan officers start their workday at 9 AM, without impacting peak traffic hours.
+
+  Code: src/day3/airflow_demo.py — create_rag_ingestion_dag_definition() (cron_expression field)
+  Test: tests/test_airflow_demo.py — test_cron_daily, test_dag_definition_cron
+
+================================================================================
+DATABRICKS INTEGRATION MAP
+================================================================================
+
++-----------------------------+------------------------------------------+----------------------------------------+
+| Day3 Concept                | Databricks Equivalent                    | Production Use                         |
++-----------------------------+------------------------------------------+----------------------------------------+
+| fixed_size_chunk()          | Spark UDF on Delta Bronze table          | Batch chunk 10M docs in parallel       |
+| recursive_chunk()           | Spark UDF on Delta Bronze table          | Standard chunking for most doc types   |
+| semantic_chunk()            | MLflow-served embedding model + UDF      | High-accuracy chunking for legal/med   |
+| extract_metadata_from_chunk | Delta table schema (category, has_price) | Pre-filter vector search by metadata   |
+| BM25Index                   | VS query_type="HYBRID" (built-in BM25)  | No separate BM25 setup required        |
+| DenseIndex                  | Databricks Vector Search (STANDARD)      | databricks-bge-large-en endpoint       |
+| reciprocal_rank_fusion      | VS query_type="HYBRID" (built-in RRF)   | Automatic fusion in VS HYBRID mode     |
+| HybridSearcher              | VS query_type="HYBRID"                   | One param change in similarity_search  |
+| CrossEncoderReranker        | databricks-bge-reranker-v2-m3 endpoint  | Mosaic ML Reranking API                |
+| mmr_select()                | Custom UDF post-retrieval                | Diversity in multi-doc summarisation   |
+| metadata_filter()           | VS filters={} parameter                  | Pass directly to similarity_search     |
+| build_retrieval_pipeline()  | LangChain + VS retriever chain           | Full chain in Databricks notebook      |
+| SemanticCache               | Delta table + VS lookup                  | Cache with TTL in Delta, VS for lookup |
+| LangSmithTracer             | MLflow Tracing (mlflow.langchain)        | Auto-captured in Databricks notebooks  |
+| AdvancedRAGPipeline         | LangGraph agent on Databricks            | Deployed as Databricks Apps (Flask)    |
+| GOLDEN_DATASET              | Delta table dev_agents.naval.golden_qa   | Version-controlled in Unity Catalog    |
+| compute_ragas_proxy()       | MLflow evaluation with ragas library     | mlflow.evaluate() with ragas metrics   |
+| RAGEvaluator.save_baseline  | MLflow experiment baseline run           | Compare experiment runs in MLflow UI   |
+| ab_test()                   | MLflow A/B experiment comparison         | Two experiment runs, compare metrics   |
+| extract_products()          | Databricks Workflow Task (Notebook)      | Bronze ingestion notebook              |
+| chunk_and_embed()           | Databricks Workflow Task (Python)        | Silver chunking + embedding notebook   |
+| index_to_vectorstore()      | VS Delta Sync (automatic on commit)      | Triggered by Delta table write         |
+| validate_index()            | Databricks Workflow Task (Notebook)      | Validation notebook with test queries  |
+| SimpleDAGRunner             | Databricks Workflows Job                 | Job with task dependencies in UI       |
+| Airflow PythonOperator      | Databricks Workflows Task                | Same Python functions, managed runtime |
+| Cron expression             | Databricks Workflows Schedule (cron)     | Identical cron format, IST timezone    |
++-----------------------------+------------------------------------------+----------------------------------------+
+
+================================================================================
+QUICK REFERENCE: WHEN TO USE WHICH STRATEGY
+================================================================================
+
+CHUNKING:
+  Prototyping / unknown doc type  ->  recursive_chunk (safe default)
+  FAQ / markdown / product catalog ->  character_chunk (\n\n separator)
+  Legal / medical / research docs  ->  semantic_chunk (with encoder)
+  Speed-critical batch pipelines   ->  fixed_size_chunk
+
+SEARCH:
+  Exact model numbers / part codes ->  BM25 (keyword)
+  Meaning-based / conversational   ->  Dense (semantic)
+  Production RAG (default)         ->  Hybrid + RRF (always best overall)
+
+RERANKING:
+  Speed priority                   ->  Dense only, no reranker
+  Accuracy priority                ->  Hybrid + CrossEncoder reranking
+  Result diversity needed          ->  Hybrid + MMR (lambda=0.5)
+  Category / price constraints     ->  Metadata filter first, then dense + rerank
+
+EVALUATION CADENCE:
+  During development               ->  compute_ragas_proxy() on 10 questions
+  Before any PR merge              ->  RAGEvaluator.run() on full golden set
+  Comparing pipeline variants      ->  ab_test() on same golden set
+  Production monitoring            ->  LangSmith traces + weekly ragas re-run
+
+================================================================================
+END OF DAY 3 TOPICS
+================================================================================

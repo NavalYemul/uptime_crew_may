@@ -1,0 +1,139 @@
+PRODUCT ID: P001
+Name: MacBook Pro 14-inch M3 Pro
+Category: Laptop
+Price: ₹1,99,900
+Description: The MacBook Pro 14-inch with M3 Pro chip is designed for professionals who demand peak performance. It features 18GB unified memory, up to 1TB SSD storage, and delivers blazing-fast workflows for machine learning, video editing, and software development. The 14.2-inch Liquid Retina XDR display with 120Hz ProMotion provides stunning visuals. Battery life up to 18 hours makes it ideal for all-day use.
+Tags: laptop, apple, m3, machine-learning, data-science, battery-life, professional
+
+PRODUCT ID: P002
+Name: Samsung Galaxy S24 Ultra
+Category: Smartphone
+Price: ₹1,29,999
+Description: The Galaxy S24 Ultra is Samsung's flagship smartphone featuring a 200MP main camera and Snapdragon 8 Gen 3 processor. The titanium frame, built-in S Pen, and 6.8-inch Dynamic AMOLED 2X 120Hz display make it unique among Android flagships. The AI-powered photo editing removes objects and generates fill content using Samsung Galaxy AI. 5000mAh battery with 45W fast charging.
+Tags: smartphone, samsung, amoled, 200mp, s-pen, android, flagship
+
+PRODUCT ID: P003
+Name: Sony WH-1000XM5
+Category: Headphones
+Price: ₹29,990
+Description: Sony WH-1000XM5 wireless headphones deliver industry-leading active noise cancellation powered by 8 microphones and dual processors. The QN2e HD Noise Cancelling Processor eliminates ambient noise. 30-hour battery life with quick charge. Multipoint Bluetooth connects two devices simultaneously. LDAC codec for Hi-Res Audio wireless playback.
+Tags: headphones, sony, anc, wireless, noise-cancelling, bluetooth, hi-res
+
+PRODUCT ID: P004
+Name: Dell XPS 15
+Category: Laptop
+Price: ₹1,89,990
+Description: Dell XPS 15 features a 15.6-inch 3.5K OLED display with 100% DCI-P3 colour gamut, Intel Core i9-13900H processor, and NVIDIA GeForce RTX 4070 with 8GB GDDR6. With 32GB DDR5 RAM and 1TB NVMe SSD, it handles 4K video editing and 3D rendering. Ideal for content creators, designers, and developers requiring a portable workstation.
+Tags: laptop, dell, oled, rtx4070, content-creation, video-editing, intel
+
+PRODUCT ID: P005
+Name: Apple iPhone 15 Pro Max
+Category: Smartphone
+Price: ₹1,59,900
+Description: iPhone 15 Pro Max features the A17 Pro chip built on 3nm process technology, titanium design that is 19% lighter than stainless steel, and a 48MP main camera with 5x optical zoom. The Action button is customizable. USB-C with USB 3 speeds. ProMotion 120Hz display up to 2000 nits peak brightness. Up to 29 hours video playback.
+Tags: smartphone, apple, a17-pro, titanium, 5x-zoom, usb-c, ios
+
+PRODUCT ID: P006
+Name: Apple AirPods Pro 2nd Generation
+Category: Headphones
+Price: ₹24,900
+Description: AirPods Pro 2nd gen feature the H2 chip for 2x improved Active Noise Cancellation and new Transparency mode. Personalized Spatial Audio with dynamic head tracking creates immersive sound. Up to 6 hours listening time with ANC enabled. USB-C charging case provides 30 hours total. MagSafe and Apple Watch charger compatible.
+Tags: headphones, apple, anc, spatial-audio, airpods, usb-c, wireless
+
+PRODUCT ID: P007
+Name: Lenovo ThinkPad X1 Carbon Gen 12
+Category: Laptop
+Price: ₹1,49,990
+Description: ThinkPad X1 Carbon Gen 12 weighs just 1.12kg, making it the lightest business laptop with MIL-SPEC durability (MIL-STD-810H). Intel Core Ultra 7 processor with AI acceleration, 32GB LPDDR5 RAM, Thunderbolt 4, and 57Wh battery. The 14-inch IPS anti-glare display reduces eye strain for all-day use. Best laptop for travelling executives.
+Tags: laptop, lenovo, thinkpad, lightweight, business, mil-spec, travel
+
+PRODUCT ID: P008
+Name: iPad Pro 12.9-inch M2
+Category: Tablet
+Price: ₹1,12,900
+Description: iPad Pro 12.9-inch with M2 chip features the Liquid Retina XDR display with ProMotion 120Hz and 1000 nits sustained brightness. Apple Pencil 2nd gen hover support at 12mm above the display. 16GB RAM with 256GB to 2TB storage. Wi-Fi 6E and optional 5G. Thunderbolt/USB 4 port for connecting 6K external displays. Ideal for creative professionals and architects.
+Tags: tablet, apple, ipad, m2, apple-pencil, creative, professional
+
+PRODUCT ID: P009
+Name: OnePlus 12
+Category: Smartphone
+Price: ₹64,999
+Description: OnePlus 12 features the Snapdragon 8 Gen 3 processor, 50W wireless charging (fastest in class), and 100W SUPERVOOC wired charging from 0 to 100% in 26 minutes. Hasselblad camera system with 50MP main sensor, 48MP ultrawide, and 64MP periscope telephoto. 6.82-inch AMOLED 120Hz display with 4500 nits peak brightness.
+Tags: smartphone, oneplus, supervooc, wireless-charging, hasselblad, snapdragon
+
+PRODUCT ID: P010
+Name: Samsung Galaxy Tab S9 Ultra
+Category: Tablet
+Price: ₹1,08,999
+Description: Galaxy Tab S9 Ultra features a 14.6-inch Dynamic AMOLED 2X display with 120Hz refresh rate, Snapdragon 8 Gen 2, 12GB RAM, and S Pen included in the box. IP68 water and dust resistance. Wi-Fi 6E, optional 5G. Samsung DeX mode turns it into a desktop experience. With the Book Cover Keyboard, it is a complete productivity device.
+Tags: tablet, samsung, amoled, s-pen, ip68, dex, productivity
+
+PRODUCT ID: P011
+Name: ASUS ROG Zephyrus G14
+Category: Laptop
+Price: ₹1,39,990
+Description: ROG Zephyrus G14 is the best gaming laptop under ₹1.5 lakh. AMD Ryzen 9 8945HS processor with AMD Radeon RX 7700S GPU. 14-inch QHD+ 165Hz display with 500 nits brightness. ROG MUX Switch for direct GPU output. 73Wh battery delivers up to 10 hours of general use. ROG Armoury Crate software for performance modes.
+Tags: laptop, asus, rog, gaming, amd, ryzen, gaming-laptop
+
+PRODUCT ID: P012
+Name: Logitech MX Master 3S
+Category: Accessories
+Price: ₹9,995
+Description: Logitech MX Master 3S features MagSpeed electromagnetic scroll wheel for near-silent ultra-fast scrolling. 8000 DPI Darkfield sensor works on any surface including glass. Flow multi-device feature lets you copy-paste across up to 3 computers. USB-C charging with 70-day battery life. Comfortable ergonomic design for all-day productivity. Best mouse for professionals.
+Tags: mouse, logitech, mx-master, productivity, wireless, ergonomic, accessories
+
+PRODUCT ID: P013
+Name: Anker 737 PowerCore 24K
+Category: Accessories
+Price: ₹6,999
+Description: Anker 737 PowerCore 24K power bank has 24000mAh capacity with 140W total output. Charges MacBook Pro from 0 to 50% in 45 minutes. Two USB-C ports (140W + 60W) and one USB-A port. Digital display shows exact battery percentage and wattage. IQ4 intelligent power routing. 3-port simultaneous charging. TSA airline carry-on approved.
+Tags: powerbank, anker, 140w, macbook, usb-c, accessories, travel
+
+PRODUCT ID: P014
+Name: Samsung T7 Shield Portable SSD
+Category: Accessories
+Price: ₹12,999
+Description: Samsung T7 Shield is a ruggedized portable SSD with IP65 dust and water resistance and MIL-STD-810G shock resistance. Available in 1TB and 2TB. USB 3.2 Gen 2 interface delivers 1050 MB/s read and 1000 MB/s write speeds. Works with PC, Mac, Android, and PlayStation. AES 256-bit hardware encryption. Compact rubber-frame design.
+Tags: ssd, samsung, portable, ip65, usb-c, fast-storage, accessories
+
+PRODUCT ID: P015
+Name: Google Pixel 8 Pro
+Category: Smartphone
+Price: ₹1,06,999
+Description: Google Pixel 8 Pro features the Google Tensor G3 chip with AI acceleration, 50MP main camera with new Magic Eraser and Best Take features, Temperature sensor for measuring surface temperatures, and guaranteed 7 years of Android OS updates. 6.7-inch OLED 120Hz display with 2400 nits peak brightness. 5050mAh battery with 30W wired charging.
+Tags: smartphone, google, pixel, tensor-g3, ai-camera, android, 7-years-updates
+
+PRODUCT ID: P016
+Name: Jabra Elite 10 Earbuds
+Category: Headphones
+Price: ₹22,999
+Description: Jabra Elite 10 true wireless earbuds feature MultiSensor Voice technology with 6 microphones for crystal-clear calls. Adaptive ANC with Jabra Advanced ANC removes 50% more noise than previous generation. Dolby Atmos Spatial Sound for immersive audio. 6 hours per charge, 27 hours total with case. IP57 water resistance. Wireless charging case.
+Tags: earbuds, jabra, anc, dolby-atmos, wireless, ip57, headphones
+
+PRODUCT ID: P017
+Name: Bose QuietComfort 45
+Category: Headphones
+Price: ₹24,900
+Description: Bose QuietComfort 45 headphones offer iconic Bose noise cancellation in Quiet Mode, and Aware Mode for letting in ambient sound. High-fidelity audio with Bose proprietary TriPort technology. 24-hour battery life on a single charge, plus 15-minute quick charge for 3 hours playback. Comfortable soft earcushion design for all-day wear. Bluetooth 5.1 multipoint.
+Tags: headphones, bose, quietcomfort, anc, bluetooth, comfortable, wireless
+
+PRODUCT ID: P018
+Name: Microsoft Surface Pro 10
+Category: Tablet
+Price: ₹1,59,999
+Description: Microsoft Surface Pro 10 is a 2-in-1 tablet and laptop powered by Intel Core Ultra 5 with integrated Intel Arc GPU. The 13-inch PixelSense touchscreen display has a 2880x1920 resolution and Gorilla Glass 5 protection. Surface Slim Pen 2 supported for handwriting and sketching. Runs Windows 11 Pro natively. Kickstand adjusts to any angle. Works with Surface Pro Flex Keyboard.
+Tags: tablet, microsoft, surface, windows, stylus, 2-in-1, intel
+
+PRODUCT ID: P019
+Name: Kindle Paperwhite 11th Generation
+Category: Accessories
+Price: ₹13,999
+Description: Kindle Paperwhite features a 6.8-inch glare-free display with 300ppi resolution for sharp text in any lighting. Adjustable warm light reduces eye strain for bedtime reading. 10-week battery life on a single charge. IPX8 waterproof rating — safe in the bath or by the pool. 8GB or 32GB storage. USB-C charging. Compact and lightweight at 207g.
+Tags: kindle, amazon, ereader, e-ink, waterproof, books, accessories
+
+PRODUCT ID: P020
+Name: Xiaomi 14 Ultra
+Category: Smartphone
+Price: ₹99,999
+Description: Xiaomi 14 Ultra features a co-engineered Leica Summilux camera system with four 50MP cameras including a 1-inch Sony LYT-900 main sensor and variable aperture (f/1.63 to f/4.0). Snapdragon 8 Gen 3 processor, 5000mAh battery with 90W hypercharge wired and 80W wireless charging. 6.73-inch AMOLED 120Hz display with 3000 nits peak brightness. IP68 rated.
+Tags: smartphone, xiaomi, leica, 1-inch-sensor, amoled, 90w-charging, flagship

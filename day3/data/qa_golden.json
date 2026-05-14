@@ -1,0 +1,52 @@
+[
+  {
+    "question": "What is the best laptop for machine learning and data science?",
+    "ground_truth": "MacBook Pro 14 M3 Pro (₹1,99,900) with M3 Pro chip, 18GB unified memory, and 18-hour battery is best for ML and data science.",
+    "category": "laptop"
+  },
+  {
+    "question": "Which smartphone has the best camera system?",
+    "ground_truth": "Samsung Galaxy S24 Ultra has a 200MP main camera with quad camera system including 10MP telephoto at 3x and 50MP at 5x zoom.",
+    "category": "smartphone"
+  },
+  {
+    "question": "What headphones have the best noise cancellation?",
+    "ground_truth": "Sony WH-1000XM5 has industry-leading ANC with 8 microphones and dual processors, offering 30-hour battery life.",
+    "category": "headphones"
+  },
+  {
+    "question": "Which laptop is best for travelling executives?",
+    "ground_truth": "Lenovo ThinkPad X1 Carbon Gen 12 at 1.12kg with MIL-SPEC durability and 57Wh battery is best for travelling executives.",
+    "category": "laptop"
+  },
+  {
+    "question": "What is the price of Apple AirPods Pro?",
+    "ground_truth": "Apple AirPods Pro 2nd generation is priced at ₹24,900.",
+    "category": "headphones"
+  },
+  {
+    "question": "Which tablet supports a stylus pen?",
+    "ground_truth": "Both iPad Pro 12.9-inch M2 (with Apple Pencil 2nd gen) and Samsung Galaxy Tab S9 Ultra (S Pen included) support stylus input.",
+    "category": "tablet"
+  },
+  {
+    "question": "What is the best gaming laptop under 1.5 lakh?",
+    "ground_truth": "ASUS ROG Zephyrus G14 (₹1,39,990) with AMD Ryzen 9 8945HS and RX 7700S with 144Hz display is best gaming laptop under ₹1.5 lakh.",
+    "category": "laptop"
+  },
+  {
+    "question": "Which phone supports wireless charging?",
+    "ground_truth": "OnePlus 12 supports 50W wireless charging alongside 100W SUPERVOOC wired charging.",
+    "category": "smartphone"
+  },
+  {
+    "question": "What is the best mouse for productivity?",
+    "ground_truth": "Logitech MX Master 3S (₹9,995) with MagSpeed scroll wheel and Flow multi-device feature is best for productivity.",
+    "category": "accessories"
+  },
+  {
+    "question": "Which power bank can charge a MacBook?",
+    "ground_truth": "Anker 737 PowerCore 24K (₹6,999) with 140W output can charge MacBook Pro from 0 to 50% in 45 minutes.",
+    "category": "accessories"
+  }
+]
