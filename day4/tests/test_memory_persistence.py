@@ -76,3 +76,79 @@ class TestChatbotGraph:
 
         snapshots = get_state_history(graph, "snapshot_thread")
         assert len(snapshots) >= 2
+
+
+class TestShortTermMemory:
+    def test_add_and_get_recent(self):
+        from day4.memory_persistence import ShortTermMemory
+        mem = ShortTermMemory()
+        mem.add("msg1")
+        mem.add("msg2")
+        mem.add("msg3")
+        recent = mem.get_recent(2)
+        assert recent == ["msg2", "msg3"]
+
+    def test_get_recent_all(self):
+        from day4.memory_persistence import ShortTermMemory
+        mem = ShortTermMemory()
+        mem.add("a")
+        mem.add("b")
+        assert mem.get_recent(10) == ["a", "b"]
+
+    def test_get_recent_empty(self):
+        from day4.memory_persistence import ShortTermMemory
+        mem = ShortTermMemory()
+        assert mem.get_recent(5) == []
+
+    def test_clear(self):
+        from day4.memory_persistence import ShortTermMemory
+        mem = ShortTermMemory()
+        mem.add("hello")
+        mem.clear()
+        assert mem.get_recent(10) == []
+        assert len(mem) == 0
+
+    def test_len(self):
+        from day4.memory_persistence import ShortTermMemory
+        mem = ShortTermMemory()
+        mem.add("x")
+        mem.add("y")
+        assert len(mem) == 2
+
+
+class TestLongTermMemory:
+    def test_store_and_retrieve(self):
+        from day4.memory_persistence import LongTermMemory
+        ltm = LongTermMemory()
+        ltm.store("user_name", "Naval")
+        assert ltm.retrieve("user_name") == "Naval"
+
+    def test_retrieve_missing(self):
+        from day4.memory_persistence import LongTermMemory
+        ltm = LongTermMemory()
+        assert ltm.retrieve("nonexistent") is None
+
+    def test_search_by_key(self):
+        from day4.memory_persistence import LongTermMemory
+        ltm = LongTermMemory()
+        ltm.store("user_preference_color", "blue")
+        ltm.store("user_preference_food", "pizza")
+        ltm.store("work_location", "Mumbai")
+        results = ltm.search("preference")
+        keys = [r["key"] for r in results]
+        assert "user_preference_color" in keys
+        assert "user_preference_food" in keys
+
+    def test_search_by_value(self):
+        from day4.memory_persistence import LongTermMemory
+        ltm = LongTermMemory()
+        ltm.store("city", "Mumbai")
+        results = ltm.search("mumbai")
+        assert len(results) == 1
+        assert results[0]["key"] == "city"
+
+    def test_search_no_match(self):
+        from day4.memory_persistence import LongTermMemory
+        ltm = LongTermMemory()
+        ltm.store("k", "v")
+        assert ltm.search("zzz_no_match") == []

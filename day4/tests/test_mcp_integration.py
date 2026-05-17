@@ -4,7 +4,9 @@ from langchain_core.messages import HumanMessage, AIMessage
 from day4.mcp_integration import (
     show_mcp_setup, show_mcp_servers,
     mcp_filesystem_read, mcp_github_create_issue, mcp_databricks_run_sql,
-    build_mcp_agent
+    build_mcp_agent,
+    show_mcp_producer_code, show_json_rpc_example,
+    show_spring_boot_mcp_wrapper, tokenize_and_count,
 )
 from day4.tools_agents import MockLLMWithTools
 
@@ -77,3 +79,47 @@ class TestMCPAgent:
         result = agent.invoke({"messages": [HumanMessage("Read the products file")]})
         assert "messages" in result
         assert len(result["messages"]) > 1
+
+
+class TestNewMCPFunctions:
+    def test_tokenize_and_count_returns_token_count(self):
+        result = tokenize_and_count("Hello, world!")
+        assert "token_count" in result
+        assert isinstance(result["token_count"], int)
+        assert result["token_count"] > 0
+
+    def test_tokenize_and_count_model_key(self):
+        result = tokenize_and_count("test", model="gpt-4o")
+        assert result["model"] == "gpt-4o"
+
+    def test_tokenize_and_count_text_preview(self):
+        result = tokenize_and_count("short text")
+        assert "text_preview" in result
+
+    def test_show_mcp_producer_code_contains_fastmcp(self):
+        code = show_mcp_producer_code()
+        assert "FastMCP" in code
+
+    def test_show_mcp_producer_code_contains_tool(self):
+        code = show_mcp_producer_code()
+        assert "@mcp.tool()" in code
+
+    def test_show_json_rpc_example_contains_jsonrpc(self):
+        example = show_json_rpc_example()
+        assert "jsonrpc" in example["request"]
+        assert example["request"]["jsonrpc"] == "2.0"
+
+    def test_show_json_rpc_example_structure(self):
+        example = show_json_rpc_example()
+        assert "request" in example
+        assert "response" in example
+        assert "method" in example["request"]
+
+    def test_show_spring_boot_mcp_wrapper_contains_spring_reference(self):
+        code = show_spring_boot_mcp_wrapper()
+        # The wrapper describes connecting to a Spring Boot service
+        assert "spring" in code.lower() or "Spring" in code or "SPRING" in code
+
+    def test_show_spring_boot_mcp_wrapper_contains_fastmcp(self):
+        code = show_spring_boot_mcp_wrapper()
+        assert "FastMCP" in code

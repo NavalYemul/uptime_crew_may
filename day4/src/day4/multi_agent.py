@@ -24,6 +24,7 @@ Run: python -m day4.multi_agent
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import TypedDict, Annotated, Optional, Callable
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langgraph.graph import StateGraph, START, END
@@ -212,6 +213,94 @@ def build_research_team(research_fn=None, write_fn=None):
         research_fn   = research_fn or default_research,
         write_fn      = write_fn or default_write,
     )
+
+
+# ══════════════════════════════════════════════════════
+# AGENT TYPE ENUM
+# ══════════════════════════════════════════════════════
+
+class AgentType(Enum):
+    """Enumeration of supported agent architecture patterns."""
+    REACT            = "react"
+    PLAN_AND_EXECUTE = "plan_and_execute"
+    AGENTIC_RAG      = "agentic_rag"
+
+
+# ══════════════════════════════════════════════════════
+# AGENTIC RAG
+# ══════════════════════════════════════════════════════
+
+class RAGState(TypedDict):
+    """State for the Agentic RAG graph."""
+    query:         str
+    documents:     list[str]
+    answer:        str
+    needs_rewrite: bool
+    iteration:     int
+
+
+def build_agentic_rag_graph(
+    retrieve_fn:  Callable[[str], list[str]],
+    generate_fn:  Callable[[str, list[str]], str],
+):
+    """Build an Agentic RAG graph with retrieve → grade → (rewrite → retrieve)* → generate.
+
+    Flow:
+      retrieve_node  — calls retrieve_fn(query) → sets documents
+      grade_node     — checks relevance (len(documents) > 0), sets needs_rewrite
+      rewrite_node   — rewrites query (appends " detailed explanation")
+      generate_node  — calls generate_fn(query, documents) → sets answer
+
+    Conditional: if needs_rewrite and iteration < 2 → rewrite → retrieve
+                 else → generate
+
+    Args:
+        retrieve_fn: Callable(query: str) -> list[str]. Retrieves relevant documents.
+        generate_fn: Callable(query: str, docs: list[str]) -> str. Generates an answer.
+
+    Returns:
+        Compiled LangGraph graph.
+    """
+    def retrieve_node(state: RAGState) -> dict:
+        docs = retrieve_fn(state["query"])
+        return {"documents": docs}
+
+    def grade_node(state: RAGState) -> dict:
+        # Simple relevance check: documents exist
+        needs_rewrite = len(state["documents"]) == 0
+        return {"needs_rewrite": needs_rewrite}
+
+    def rewrite_node(state: RAGState) -> dict:
+        rewritten = state["query"] + " detailed explanation"
+        return {"query": rewritten, "iteration": state.get("iteration", 0) + 1}
+
+    def generate_node(state: RAGState) -> dict:
+        answer = generate_fn(state["query"], state["documents"])
+        return {"answer": answer}
+
+    def route_after_grade(state: RAGState) -> str:
+        iteration = state.get("iteration", 0)
+        if state.get("needs_rewrite") and iteration < 2:
+            return "rewrite"
+        return "generate"
+
+    g = StateGraph(RAGState)
+    g.add_node("retrieve", retrieve_node)
+    g.add_node("grade",    grade_node)
+    g.add_node("rewrite",  rewrite_node)
+    g.add_node("generate", generate_node)
+
+    g.add_edge(START,      "retrieve")
+    g.add_edge("retrieve", "grade")
+    g.add_conditional_edges(
+        "grade",
+        route_after_grade,
+        {"rewrite": "rewrite", "generate": "generate"},
+    )
+    g.add_edge("rewrite",  "retrieve")
+    g.add_edge("generate", END)
+
+    return g.compile()
 
 
 # ══════════════════════════════════════════════════════

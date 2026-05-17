@@ -148,6 +148,129 @@ def get_state_history(graph, thread_id: str) -> list[dict]:
 
 
 # ══════════════════════════════════════════════════════
+# SHORT-TERM MEMORY
+# ══════════════════════════════════════════════════════
+
+class ShortTermMemory:
+    """In-memory short-term memory backed by a plain Python list.
+
+    Suitable for within-session conversation context where you want
+    fast access to the N most recent messages without persistence.
+    """
+
+    def __init__(self):
+        self._messages: list[str] = []
+
+    def add(self, message: str) -> None:
+        """Append a message to memory."""
+        self._messages.append(message)
+
+    def get_recent(self, n: int) -> list[str]:
+        """Return the n most recent messages.
+
+        Args:
+            n: Maximum number of messages to return.
+
+        Returns:
+            List of the n most recent messages (oldest first).
+        """
+        return self._messages[-n:] if n > 0 else []
+
+    def clear(self) -> None:
+        """Remove all messages from memory."""
+        self._messages.clear()
+
+    def __len__(self) -> int:
+        return len(self._messages)
+
+
+# ══════════════════════════════════════════════════════
+# LONG-TERM MEMORY
+# ══════════════════════════════════════════════════════
+
+class LongTermMemory:
+    """In-memory long-term memory backed by a plain Python dict.
+
+    Uses keyword matching for retrieval. In production, replace with
+    a vector database (Pinecone, Weaviate, pgvector) for semantic search.
+    """
+
+    def __init__(self):
+        self._store: dict[str, str] = {}
+
+    def store(self, key: str, value: str) -> None:
+        """Store a key-value pair.
+
+        Args:
+            key:   Identifier for the memory entry (e.g. "user_preference_color").
+            value: The value to remember.
+        """
+        self._store[key] = value
+
+    def retrieve(self, key: str) -> Optional[str]:
+        """Retrieve a value by exact key.
+
+        Args:
+            key: The key to look up.
+
+        Returns:
+            The stored value, or None if not found.
+        """
+        return self._store.get(key)
+
+    def search(self, query: str) -> list[dict[str, str]]:
+        """Search for entries where key or value contains any query word.
+
+        Simple keyword matching — good enough for demos and tests.
+        In production: use embeddings + cosine similarity.
+
+        Args:
+            query: Space-separated keywords to search for.
+
+        Returns:
+            List of {"key": ..., "value": ...} dicts matching the query.
+        """
+        keywords = query.lower().split()
+        results = []
+        for k, v in self._store.items():
+            combined = (k + " " + v).lower()
+            if any(kw in combined for kw in keywords):
+                results.append({"key": k, "value": v})
+        return results
+
+    def __len__(self) -> int:
+        return len(self._store)
+
+
+# ══════════════════════════════════════════════════════
+# BUFFER MEMORY CHAIN (pure Python, no LangChain)
+# ══════════════════════════════════════════════════════
+
+def build_buffer_memory_chain(llm_fn: Callable[[list[dict]], str]):
+    """Return a chat function that maintains a conversation buffer.
+
+    Demonstrates the ConversationBufferMemory concept using only a plain
+    Python list — no LangChain dependency required for understanding the idea.
+
+    Args:
+        llm_fn: Callable(messages: list[dict]) -> str.
+                Each dict has "role" ("user"/"assistant") and "content".
+
+    Returns:
+        Callable(user_message: str) -> str that accumulates history.
+    """
+    history: list[dict] = []
+
+    def chat(user_message: str) -> str:
+        history.append({"role": "user", "content": user_message})
+        reply = llm_fn(history)
+        history.append({"role": "assistant", "content": reply})
+        return reply
+
+    return chat
+
+
+# ══════════════════════════════════════════════════════
 # MAIN DEMO
 # ══════════════════════════════════════════════════════
 

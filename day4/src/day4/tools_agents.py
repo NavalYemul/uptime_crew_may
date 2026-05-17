@@ -15,12 +15,14 @@ Run: python -m day4.tools_agents
 from __future__ import annotations
 
 import json
-from typing import TypedDict, Annotated, Optional, Any, Callable
+from typing import TypedDict, Annotated, Optional, Any, Callable, Type
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
-from langchain_core.tools import tool
+from langchain_core.tools import tool, BaseTool
+from langchain_core.prompts import PromptTemplate
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
+from pydantic import BaseModel
 
 
 # ══════════════════════════════════════════════════════
@@ -237,6 +239,189 @@ def count_tool_calls(state: AgentState) -> int:
         Number of ToolMessage instances in the message history.
     """
     return sum(1 for m in state.get("messages", []) if isinstance(m, ToolMessage))
+
+
+# ══════════════════════════════════════════════════════
+# BASE TOOL SUBCLASS EXAMPLE
+# ══════════════════════════════════════════════════════
+
+class WeatherTool(BaseTool):
+    """Example BaseTool subclass — an alternative to the @tool decorator.
+
+    Use BaseTool when you need instance attributes, complex initialization,
+    or shared state across calls (e.g., a database connection or API client).
+    """
+    name: str = "weather_tool"
+    description: str = "Get current weather for a city. Input should be the city name."
+
+    def _run(self, city: str) -> str:
+        """Synchronous implementation required by BaseTool."""
+        weather_data = {
+            "mumbai":    "Humid, 32C, partly cloudy",
+            "delhi":     "Hot, 38C, sunny",
+            "bangalore": "Pleasant, 24C, light breeze",
+            "london":    "Cool, 14C, cloudy",
+            "tokyo":     "Mild, 22C, overcast",
+        }
+        return weather_data.get(city.lower().strip(), f"22C, partly cloudy in {city}")
+
+    async def _arun(self, city: str) -> str:
+        """Async version (required by BaseTool interface)."""
+        return self._run(city)
+
+
+# ══════════════════════════════════════════════════════
+# PYDANTIC STRUCTURED OUTPUT
+# ══════════════════════════════════════════════════════
+
+class WeatherOutput(BaseModel):
+    """Structured weather data — use Instructor or .with_structured_output() to produce this."""
+    city: str
+    temperature: float
+    unit: str
+    description: str
+
+
+# ══════════════════════════════════════════════════════
+# GUARDRAILS
+# ══════════════════════════════════════════════════════
+
+UNSAFE_KEYWORDS = ["ignore previous", "jailbreak", "DAN", "system prompt"]
+
+
+def add_guardrails(chain_fn: Callable[[str], Any]) -> Callable[[str], Any]:
+    """Wrap a function with input guardrails.
+
+    Checks input for common prompt injection / jailbreak patterns.
+    Raises ValueError if unsafe content is detected.
+
+    Args:
+        chain_fn: Any callable that takes a string input.
+
+    Returns:
+        Wrapped callable that validates input before calling chain_fn.
+    """
+    def safe_wrapper(user_input: str) -> Any:
+        lower = user_input.lower()
+        for keyword in UNSAFE_KEYWORDS:
+            if keyword.lower() in lower:
+                raise ValueError(
+                    f"Input blocked: unsafe pattern detected — '{keyword}'"
+                )
+        return chain_fn(user_input)
+
+    return safe_wrapper
+
+
+# ══════════════════════════════════════════════════════
+# REACT AGENT EXECUTOR (local prompt, no hub.pull)
+# ══════════════════════════════════════════════════════
+
+def build_react_agent_executor(llm, tools: list):
+    """Build a ReAct-style agent using LangChain's create_react_agent pattern.
+
+    Uses a local prompt template instead of hub.pull to avoid network calls.
+    In production: hub.pull("hwchase17/react") provides the canonical ReAct prompt.
+
+    Args:
+        llm:   LangChain LLM instance.
+        tools: List of @tool-decorated callables.
+
+    Returns:
+        Compiled LangGraph agent (same as build_tool_agent but with explicit prompt).
+    """
+    # Local ReAct prompt — equivalent to hwchase17/react from hub
+    react_prompt = PromptTemplate.from_template(
+        "Answer the following question using the available tools.\n\n"
+        "Tools: {tools}\n\n"
+        "Question: {input}\n\n"
+        "Think step by step. Use a tool if needed.\n"
+        "Thought: {agent_scratchpad}"
+    )
+    # For LangGraph-based agents, build_tool_agent already implements ReAct
+    return build_tool_agent(llm, tools)
+
+
+# ══════════════════════════════════════════════════════
+# PLAN-AND-EXECUTE AGENT
+# ══════════════════════════════════════════════════════
+
+class PlanExecuteState(TypedDict):
+    """State for a plan-and-execute agent."""
+    task: str
+    plan: list[str]          # numbered steps
+    current_step: int
+    results: list[str]       # result of each step
+    final_answer: str
+
+
+def build_plan_execute_agent(llm_fn: Callable[[str], str], tools: list):
+    """Build a Plan-and-Execute agent using LangGraph.
+
+    Flow: plan_node generates numbered steps -> execute_node runs each step
+    in a loop -> final answer is assembled from all step results.
+
+    Args:
+        llm_fn: Callable(prompt: str) -> str. The LLM call.
+        tools:  List of @tool callables available during execution.
+
+    Returns:
+        Compiled LangGraph graph.
+    """
+    def plan_node(state: PlanExecuteState) -> dict:
+        """Generate a numbered plan for the task."""
+        prompt = f"Break this task into 2-3 numbered steps: {state['task']}"
+        plan_text = llm_fn(prompt)
+        # Parse numbered steps; fall back to wrapping in a single step
+        steps = []
+        for line in plan_text.strip().split("\n"):
+            line = line.strip()
+            if line and (line[0].isdigit() or line.startswith("-")):
+                # Remove numbering prefix
+                cleaned = line.lstrip("0123456789.-) ").strip()
+                if cleaned:
+                    steps.append(cleaned)
+        if not steps:
+            steps = [state["task"]]
+        return {"plan": steps, "current_step": 0, "results": []}
+
+    def execute_node(state: PlanExecuteState) -> dict:
+        """Execute the current step and advance."""
+        step_idx = state["current_step"]
+        plan = state["plan"]
+        results = list(state.get("results", []))
+
+        if step_idx < len(plan):
+            step = plan[step_idx]
+            result = llm_fn(f"Execute this step: {step}")
+            results.append(result)
+            return {"current_step": step_idx + 1, "results": results}
+        return {"results": results}
+
+    def finalize_node(state: PlanExecuteState) -> dict:
+        """Assemble final answer from all step results."""
+        parts = []
+        for i, (step, result) in enumerate(zip(state["plan"], state["results"]), 1):
+            parts.append(f"Step {i} ({step}): {result}")
+        final = "\n".join(parts)
+        return {"final_answer": final}
+
+    def should_continue(state: PlanExecuteState) -> str:
+        if state["current_step"] < len(state["plan"]):
+            return "execute"
+        return "finalize"
+
+    g = StateGraph(PlanExecuteState)
+    g.add_node("plan",     plan_node)
+    g.add_node("execute",  execute_node)
+    g.add_node("finalize", finalize_node)
+
+    g.add_edge(START,    "plan")
+    g.add_conditional_edges("plan",    should_continue, {"execute": "execute", "finalize": "finalize"})
+    g.add_conditional_edges("execute", should_continue, {"execute": "execute", "finalize": "finalize"})
+    g.add_edge("finalize", END)
+
+    return g.compile()
 
 
 # ══════════════════════════════════════════════════════

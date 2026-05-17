@@ -73,3 +73,77 @@ class TestSupervisorGraph:
             "final_output": None,
         })
         assert len(result["messages"]) > 3  # supervisor + researcher + writer + finalise
+
+
+class TestAgenticRAG:
+    def _make_docs(self):
+        return ["LangGraph is a framework for building stateful agents",
+                "Python is a programming language used in data science"]
+
+    def test_agentic_rag_compiles(self):
+        from day4.multi_agent import build_agentic_rag_graph
+        graph = build_agentic_rag_graph(
+            retrieve_fn=lambda q: ["doc1"],
+            generate_fn=lambda q, d: "answer",
+        )
+        assert graph is not None
+
+    def test_agentic_rag_with_relevant_docs_returns_answer(self):
+        from day4.multi_agent import build_agentic_rag_graph
+        docs = self._make_docs()
+        graph = build_agentic_rag_graph(
+            retrieve_fn=lambda q: [d for d in docs if any(w in d.lower() for w in q.lower().split())],
+            generate_fn=lambda q, d: f"Answer based on {len(d)} docs",
+        )
+        result = graph.invoke({
+            "query": "langgraph", "documents": [], "answer": "",
+            "needs_rewrite": False, "iteration": 0,
+        })
+        assert result["answer"] != ""
+        assert "docs" in result["answer"]
+
+    def test_agentic_rag_with_empty_docs_rewrites_query(self):
+        from day4.multi_agent import build_agentic_rag_graph
+        rewrite_count = [0]
+
+        def retrieve(q):
+            # Return empty on first call, docs on subsequent calls
+            if "detailed explanation" in q:
+                rewrite_count[0] += 1
+                return ["found document after rewrite"]
+            return []
+
+        graph = build_agentic_rag_graph(
+            retrieve_fn=retrieve,
+            generate_fn=lambda q, d: f"Generated from {len(d)} docs",
+        )
+        result = graph.invoke({
+            "query": "unknown topic xyz", "documents": [], "answer": "",
+            "needs_rewrite": False, "iteration": 0,
+        })
+        assert rewrite_count[0] > 0
+
+    def test_agentic_rag_answer_key_present(self):
+        from day4.multi_agent import build_agentic_rag_graph
+        graph = build_agentic_rag_graph(
+            retrieve_fn=lambda q: ["doc"],
+            generate_fn=lambda q, d: "final answer",
+        )
+        result = graph.invoke({
+            "query": "test", "documents": [], "answer": "",
+            "needs_rewrite": False, "iteration": 0,
+        })
+        assert "answer" in result
+        assert result["answer"] == "final answer"
+
+
+class TestAgentTypeEnum:
+    def test_enum_values(self):
+        from day4.multi_agent import AgentType
+        assert AgentType.REACT.value == "react"
+        assert AgentType.PLAN_AND_EXECUTE.value == "plan_and_execute"
+        assert AgentType.AGENTIC_RAG.value == "agentic_rag"
+
+    def test_enum_members(self):
+        from day4.multi_agent import AgentType
+        assert len(AgentType) == 3

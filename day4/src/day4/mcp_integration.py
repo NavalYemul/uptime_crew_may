@@ -37,6 +37,33 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 
 # ══════════════════════════════════════════════════════
+# TIKTOKEN TOKEN COUNTING
+# ══════════════════════════════════════════════════════
+
+def tokenize_and_count(text: str, model: str = "gpt-4o") -> dict:
+    """Count tokens in text using tiktoken.
+
+    Args:
+        text:  Input text to tokenize.
+        model: Model name to get the correct encoding for.
+
+    Returns:
+        Dict with token_count (int), model (str), text_preview (str).
+    """
+    import tiktoken
+    try:
+        enc = tiktoken.encoding_for_model(model)
+    except KeyError:
+        enc = tiktoken.get_encoding("cl100k_base")
+    tokens = enc.encode(text)
+    return {
+        "token_count":   len(tokens),
+        "model":         model,
+        "text_preview":  text[:80] + ("..." if len(text) > 80 else ""),
+    }
+
+
+# ══════════════════════════════════════════════════════
 # MCP CONCEPTS (shown as formatted strings for teaching)
 # ══════════════════════════════════════════════════════
 
@@ -207,6 +234,132 @@ def mcp_databricks_run_sql(query: str) -> str:
         return "Query executed successfully. 0 rows affected."
 
 
+# ══════════════════════════════════════════════════════
+# MCP PRODUCER PATTERNS
+# ══════════════════════════════════════════════════════
+
+def show_mcp_producer_code() -> str:
+    """Return a formatted string showing how to CREATE an MCP server using FastMCP.
+
+    Returns:
+        String containing runnable server.py pattern with tools, resources, prompts.
+    """
+    return '''
+# Creating an MCP server — you become the PRODUCER
+# pip install mcp
+
+# server.py
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("weather-service")
+
+@mcp.tool()
+def get_weather(city: str) -> str:
+    """Get current weather for a city."""
+    return f"Weather in {city}: 22°C, Sunny"
+
+@mcp.resource("weather://current/{city}")
+def weather_resource(city: str) -> str:
+    return f"Current weather data for {city}"
+
+@mcp.prompt()
+def weather_prompt(city: str) -> str:
+    return f"Analyze the weather in {city} and suggest appropriate clothing."
+
+if __name__ == "__main__":
+    mcp.run()  # Starts stdio transport by default
+'''
+
+
+def show_json_rpc_example() -> dict:
+    """Return a dict showing a JSON-RPC 2.0 request/response example for MCP tool calls.
+
+    Returns:
+        Dict with 'request' and 'response' keys showing the protocol.
+    """
+    return {
+        "request": {
+            "jsonrpc": "2.0",
+            "id":      1,
+            "method":  "tools/call",
+            "params":  {
+                "name":      "get_weather",
+                "arguments": {"city": "Mumbai"},
+            },
+        },
+        "response": {
+            "jsonrpc": "2.0",
+            "id":      1,
+            "result":  {
+                "content": [
+                    {"type": "text", "text": "Weather in Mumbai: 32°C, Humid, partly cloudy"},
+                ],
+            },
+        },
+    }
+
+
+def show_spring_boot_mcp_wrapper() -> str:
+    """Return a string showing how to wrap a Spring Boot REST endpoint as an MCP tool.
+
+    Returns:
+        Python source code string for a FastMCP server that proxies Spring Boot endpoints.
+    """
+    return '''
+# Wrapping a Spring Boot service as MCP tools
+# This lets any MCP client (Claude, LangGraph agent) call your Spring Boot APIs
+# pip install mcp httpx
+
+import httpx
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("spring-boot-wrapper")
+SPRING_BOOT_URL = "http://localhost:8080"
+
+@mcp.tool()
+async def get_products(category: str) -> list:
+    """Get products from the Spring Boot inventory service."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{SPRING_BOOT_URL}/api/products",
+            params={"category": category}
+        )
+        return response.json()
+
+@mcp.tool()
+async def create_order(product_id: str, quantity: int) -> dict:
+    """Create an order via the Spring Boot order service."""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{SPRING_BOOT_URL}/api/orders",
+            json={"productId": product_id, "quantity": quantity}
+        )
+        return response.json()
+
+if __name__ == "__main__":
+    mcp.run()
+'''
+
+
+# ══════════════════════════════════════════════════════
+# MOCK SEARCH TOOL (MCP consumer side demo)
+# ══════════════════════════════════════════════════════
+
+@tool
+def mcp_search_tool(query: str) -> str:
+    """Mock MCP search tool — demonstrates the consumer side of MCP.
+
+    In production: provided by a real MCP search server.
+
+    Args:
+        query: Search query string.
+
+    Returns:
+        Mock search result string.
+    """
+    return f"Search results for '{query}': Found relevant documentation and examples."
+
+
 class AgentState(TypedDict):
     """Agent state for MCP-enabled agent."""
     messages: Annotated[list[BaseMessage], add_messages]
@@ -226,7 +379,7 @@ def build_mcp_agent(llm, mock_mode: bool = True):
         Compiled LangGraph agent graph.
     """
     if mock_mode:
-        tools = [mcp_filesystem_read, mcp_github_create_issue, mcp_databricks_run_sql]
+        tools = [mcp_filesystem_read, mcp_github_create_issue, mcp_search_tool]
     else:
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -236,7 +389,7 @@ def build_mcp_agent(llm, mock_mode: bool = True):
             )
         except ImportError:
             print("[MCP] langchain-mcp-adapters not installed — using mock tools")
-            tools = [mcp_filesystem_read, mcp_github_create_issue, mcp_databricks_run_sql]
+            tools = [mcp_filesystem_read, mcp_github_create_issue, mcp_search_tool]
 
     from day4.tools_agents import MockLLMWithTools
 

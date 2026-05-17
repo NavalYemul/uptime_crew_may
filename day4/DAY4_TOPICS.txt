@@ -1,162 +1,115 @@
-DAY 4 TOPICS — LangGraph Agents, Memory, HITL & MCP
-====================================================
+DAY 4 TOPICS — Agents, LangGraph & MCP
+=======================================
 24 topics across 6 modules
-Format: Topic | What It Is | Real-World Example | Code Reference | Test Reference
-====================================================
+Format: Topic | What It Is | Example | Code Reference | Test Reference
+=======================================
 
 
-MODULE 1: LANGGRAPH FUNDAMENTALS
-Source: src/day4/langgraph_basics.py
+MODULE 1: LANGGRAPH BASICS & PROMPT ENGINEERING
+Source: src/day4/langgraph_basics.py, src/day4/prompt_engineering.py
 Notebook: notebooks/01_langgraph_basics.ipynb
 -------------------------------------------------
 
 TOPIC 1: StateGraph & TypedDict State
 What it is:
-  StateGraph is LangGraph's core building block. You define a TypedDict that acts
-  as the "memory" flowing through the graph — each node receives the full state
-  and returns a partial dict to update it. LangGraph merges updates automatically.
-  TypedDict gives you type safety and IDE autocompletion.
+  The core LangGraph building block. A TypedDict defines the state that flows
+  through the graph. Each node receives the full state and returns a partial dict.
+  LangGraph merges updates automatically.
+Code reference: src/day4/langgraph_basics.py — BMIState, build_bmi_graph()
+Test reference: tests/test_langgraph_basics.py — TestBMIGraph
 
-Real-world example (Indian context):
-  Infosys uses StateGraph for their IT service desk agent where 'TicketState'
-  carries ticket_id, priority, category, assigned_team, resolution across 8 nodes.
-  Each node updates only its relevant fields — clean separation of concerns.
-
-Code reference: src/day4/langgraph_basics.py:BMIState (TypedDict), build_bmi_graph()
-Test reference: tests/test_langgraph_basics.py:TestBMIGraph::test_normal_bmi
-
-
-TOPIC 2: Nodes — Python Functions as Graph Steps
+TOPIC 2: Nodes and Edges
 What it is:
-  A node is any Python function with signature (state: MyState) -> dict.
-  The returned dict is merged into the state. Nodes do exactly one thing:
-  compute, call an API, classify text, run a model, etc. Nodes are pure
-  and testable — no graph-specific code needed inside them.
+  Nodes are Python functions (sync or async). Edges connect them. set_entry_point()
+  sets the first node. add_edge() creates fixed connections. compile() builds the
+  runnable. invoke() runs with initial state.
+Code reference: src/day4/langgraph_basics.py — build_bmi_graph, build_review_graph
+Test reference: tests/test_langgraph_basics.py — TestBMIGraph::test_graph_nodes
 
-Real-world example (Indian context):
-  Swiggy's order pipeline has nodes: validate_order -> check_inventory ->
-  assign_delivery_partner -> send_confirmation. Each node is independently
-  testable and replaceable without changing others.
-
-Code reference: src/day4/langgraph_basics.py:calculate_bmi(), classify_bmi()
-Test reference: tests/test_langgraph_basics.py:TestBMIGraph::test_bmi_calculation
-
-
-TOPIC 3: Edges — Normal and Conditional
+TOPIC 3: Conditional Routing with add_conditional_edges
 What it is:
-  Normal edges (add_edge) always connect node A to node B.
-  Conditional edges (add_conditional_edges) call a routing function that
-  returns a string — the name of the next node to visit. This lets you
-  build if/elif/else branching purely in Python without complex graph DSLs.
+  Route to different nodes based on state. A routing function returns a string key
+  that maps to a node name. Enables branching logic — e.g. "positive" → reply_positive.
+Code reference: src/day4/langgraph_basics.py — build_review_graph (sentiment routing)
+Test reference: tests/test_langgraph_basics.py — TestReviewGraph
 
-Real-world example (Indian context):
-  HDFC Bank's loan processing: after credit_score_node, a conditional edge
-  routes to: approve_node (>750), review_node (600-750), or reject_node (<600).
-  Different underwriters handle each path.
-
-Code reference: src/day4/langgraph_basics.py:route_by_category(), build_bmi_graph()
-Test reference: tests/test_langgraph_basics.py:TestBMIGraph::test_overweight
-
-
-TOPIC 4: START/END and Graph Compilation
+TOPIC 4: Zero-shot, Few-shot, and Chain-of-Thought Prompting
 What it is:
-  START is the entry point — add_edge(START, "first_node") defines where execution
-  begins. END marks completion. .compile() validates the graph (detects unreachable
-  nodes, missing edges) and returns an object with .invoke(), .stream(), .batch().
-  Compilation catches bugs before runtime.
+  Zero-shot: describe the task with no examples. Few-shot: provide 2-5 input/output
+  examples. Chain-of-thought: add "Think step by step" to improve reasoning.
+  CoT particularly helps with math, logic, and multi-step problems.
+Code reference: src/day4/prompt_engineering.py — zero_shot_prompt, few_shot_prompt, chain_of_thought_prompt
+Test reference: tests/test_prompt_engineering.py — TestPromptTemplates
 
-Real-world example (Indian context):
-  Wipro's AI testing platform compiles test execution graphs at startup,
-  catching configuration errors before running expensive test suites against
-  client systems. Fail fast at compile time, not at 2 AM in production.
-
-Code reference: src/day4/langgraph_basics.py:build_bmi_graph() — START/END edges
-Test reference: tests/test_langgraph_basics.py:TestBMIGraph::test_graph_has_required_nodes
-
-
-TOPIC 5: Conditional Routing
+TOPIC 5: Token Counting and Context Window Limits
 What it is:
-  Conditional routing is LangGraph's if/elif pattern. A routing function reads
-  the current state and returns a string key. The conditional_edges dict maps
-  keys to node names. You can route to 2 or 20 different paths — all in pure
-  Python, fully testable, fully inspectable.
-
-Real-world example (Indian context):
-  Zepto's customer support bot: after NLP intent classification, routes to
-  order_support | payment_support | delivery_support | return_support nodes.
-  Each path has different tool access and escalation policies.
-
-Code reference: src/day4/langgraph_basics.py:build_review_graph(), route_by_sentiment()
-Test reference: tests/test_langgraph_basics.py:TestReviewGraph::test_positive_review
+  LLMs process tokens (word fragments). tiktoken counts tokens before sending to
+  the API. Staying within context limits avoids truncation. Approx limits:
+  GPT-4o 128K, Claude 3.5 Sonnet 200K. Cost = input_tokens × price_per_token.
+Code reference: src/day4/prompt_engineering.py — count_tokens, estimate_cost
+Test reference: tests/test_prompt_engineering.py — TestTokenCounting
 
 
-MODULE 2: TOOLS & REACT AGENTS
+MODULE 2: TOOLS, AGENTS, GUARDRAILS & STRUCTURED OUTPUTS
 Source: src/day4/tools_agents.py
 Notebook: notebooks/02_tools_agents.ipynb
 -------------------------------------------------
 
 TOPIC 6: @tool Decorator
 What it is:
-  The @tool decorator converts any Python function into an LLM-callable tool.
-  LangChain automatically extracts the function name, docstring, and parameter
-  type hints to generate the tool schema that the LLM sees. The LLM reads this
-  schema to decide when and how to call the tool.
+  Converts a Python function into a LangChain tool. Docstring becomes description.
+  Type hints become JSON schema. The LLM uses the schema to decide when and how
+  to call the tool.
+Code reference: src/day4/tools_agents.py — calculator, get_weather, search_web
+Test reference: tests/test_tools_agents.py — TestTools
 
-Real-world example (Indian context):
-  PhonePe's payment agent has @tool functions: check_balance(account_id),
-  transfer_funds(from_id, to_id, amount), get_transaction_history(account_id, days).
-  The LLM reads docstrings to understand what each tool does.
-
-Code reference: src/day4/tools_agents.py:calculator, get_weather, search_web
-Test reference: tests/test_tools_agents.py:TestTools::test_calculator_basic
-
-
-TOPIC 7: ToolNode & tools_condition
+TOPIC 7: BaseTool Subclass
 What it is:
-  ToolNode is LangGraph's built-in executor for tool calls. It reads the
-  tool_calls field from the last AIMessage, executes each tool, and appends
-  ToolMessage results to the state. tools_condition is a built-in conditional
-  edge function: routes to "tools" if tool_calls present, else to END.
+  For full control: subclass BaseTool and define name, description, args_schema
+  (a Pydantic model), and _run(). Useful when you need custom validation logic
+  or async support via _arun().
+Code reference: src/day4/tools_agents.py — (WeatherTool pattern in notebook 02)
+Test reference: tests/test_tools_agents.py — TestWeatherOutput
 
-Real-world example (Indian context):
-  Razorpay's fraud detection agent: LLM decides to call risk_score_tool and
-  transaction_history_tool simultaneously. ToolNode executes both, appends
-  results, and LLM synthesises a fraud verdict from the combined evidence.
-
-Code reference: src/day4/tools_agents.py:build_tool_agent() — ToolNode, tools_condition
-Test reference: tests/test_tools_agents.py:TestToolAgent::test_agent_completes
-
-
-TOPIC 8: ReAct Agent Loop
+TOPIC 8: Pydantic BaseModel for Tool Schemas
 What it is:
-  ReAct (Reasoning + Acting) alternates: LLM reasons about what to do ->
-  calls a tool -> observes the result -> reasons again. The loop continues
-  until the LLM decides it has enough information to answer (no more tool_calls).
-  In LangGraph: agent -> tools -> agent -> tools -> ... -> END.
+  Use Pydantic models to define typed, validated tool inputs and outputs.
+  Alongside Instructor, this enforces structure on LLM responses.
+  WeatherOutput(city, temperature, unit, description) is a typed return value.
+Code reference: src/day4/tools_agents.py — WeatherOutput
+Test reference: tests/test_tools_agents.py — TestWeatherOutput
 
-Real-world example (Indian context):
-  PolicyBazaar's insurance comparison agent: user asks "best health plan for
-  family of 4 in Delhi under Rs 15,000/year" -> agent calls search_plans() ->
-  calls compare_premiums() -> calls check_hospital_network() -> final answer.
-
-Code reference: src/day4/tools_agents.py:build_tool_agent() — the full loop
-Test reference: tests/test_tools_agents.py:TestToolAgent::test_count_tool_calls
-
-
-TOPIC 9: Streaming Agent Output
+TOPIC 9: Instructor Library for Structured Outputs
 What it is:
-  LangGraph graphs support .stream() which yields events as they happen:
-  each node completion, each token from the LLM, each tool execution.
-  This lets you build real-time UIs that show the agent "thinking" rather
-  than waiting for the full response. Crucial for production UX.
+  Instructor patches the OpenAI/Anthropic client so the LLM response is
+  automatically validated and parsed into a Pydantic model. No regex, no
+  string parsing — the LLM is forced to return valid structured data.
+  Usage: instructor.patch(client).chat.completions.create(response_model=MyModel)
+Code reference: src/day4/prompt_engineering.py — PersonInfo, extract_person_info_mock
+Test reference: tests/test_prompt_engineering.py — TestPersonExtraction
 
-Real-world example (Indian context):
-  MakeMyTrip's travel planning agent streams: "Searching flights..." ->
-  "Found 12 options..." -> "Checking hotel availability..." -> "Here's your
-  itinerary." Users see progress instead of a 10-second blank screen.
+TOPIC 10: ReAct Agent (Reason + Act)
+What it is:
+  The LLM alternates: Thought → Action (tool call) → Observation (result) → repeat.
+  Implemented in LangGraph with ToolNode + tools_condition + add_messages reducer.
+  LangChain: create_react_agent + AgentExecutor (older pattern).
+Code reference: src/day4/tools_agents.py — build_tool_agent, AgentState
+Test reference: tests/test_tools_agents.py — TestToolAgent
 
-Code reference: src/day4/tools_agents.py:build_tool_agent() — compiled graph supports .stream()
-Test reference: tests/test_tools_agents.py:TestToolAgent::test_extract_final_answer
+TOPIC 11: Plan-and-Execute Agent
+What it is:
+  The LLM generates a full numbered plan first. Then executes each step in order.
+  Better than ReAct for long structured tasks where the steps are known upfront.
+Code reference: src/day4/tools_agents.py — build_plan_execute_agent
+Test reference: tests/test_tools_agents.py — TestToolAgent
+
+TOPIC 12: Guardrails and Safety
+What it is:
+  Input validation before passing to LLM or tools. Check for prompt injection
+  patterns ("ignore previous instructions", "jailbreak", "DAN mode").
+  add_guardrails() wraps any function with a safety check layer.
+Code reference: src/day4/tools_agents.py — add_guardrails, UNSAFE_PATTERNS
+Test reference: tests/test_tools_agents.py — TestGuardrails
 
 
 MODULE 3: MEMORY & PERSISTENCE
@@ -164,287 +117,131 @@ Source: src/day4/memory_persistence.py
 Notebook: notebooks/03_memory_persistence.ipynb
 -------------------------------------------------
 
-TOPIC 10: InMemorySaver & thread_id
+TOPIC 13: Short-term vs Long-term Agent Memory
 What it is:
-  InMemorySaver stores graph state in a Python dict (in-process, not persisted).
-  thread_id is a string key that identifies a conversation. All .invoke() calls
-  with the same thread_id share and accumulate the same state — the bot remembers.
+  Short-term: in-process list, lasts for current conversation (sliding window).
+  Long-term: persisted to DB or vector store, available across sessions.
+  ShortTermMemory: add, get_recent(n), clear. LongTermMemory: store, retrieve, search.
+Code reference: src/day4/memory_persistence.py — ShortTermMemory, LongTermMemory
+Test reference: tests/test_memory_persistence.py — TestShortTermMemory, TestLongTermMemory
+
+TOPIC 14: ConversationBufferMemory Concept
+What it is:
+  The simplest form of memory: keep ALL previous messages in a list.
+  build_buffer_memory_chain() demonstrates the concept as a plain Python function.
+  Limitation: grows without bound. Window/summary variants solve this.
+Code reference: src/day4/memory_persistence.py — build_buffer_memory_chain
+Test reference: tests/test_memory_persistence.py — TestChatbotGraph
+
+TOPIC 15: MemorySaver (InMemorySaver) and thread_id
+What it is:
+  compile(checkpointer=MemorySaver()) gives LangGraph persistent memory within a
+  process. thread_id is the conversation key — each user gets their own thread.
   Different thread_ids are completely isolated.
+Code reference: src/day4/memory_persistence.py — build_chatbot_graph
+Test reference: tests/test_memory_persistence.py — TestCheckpointerPreservesHistory
 
-Real-world example (Indian context):
-  Nykaa's beauty advisor chatbot: each customer gets their own thread_id (customer_id).
-  Bot remembers skin type, previous purchases, allergies across the whole session.
-  thread_id ensures customer A's data never bleeds into customer B's session.
-
-Code reference: src/day4/memory_persistence.py:build_chatbot_graph(), chat_turn()
-Test reference: tests/test_memory_persistence.py:TestChatbotGraph::test_different_threads_isolated
-
-
-TOPIC 11: Conversation History
+TOPIC 16: State History and Time Travel
 What it is:
-  The add_messages reducer in the state TypedDict ensures messages accumulate
-  rather than overwrite. Each turn appends [HumanMessage, AIMessage] to the list.
-  get_conversation_history() reads stored state without running any nodes —
-  pure state inspection using graph.get_state(config).
-
-Real-world example (Indian context):
-  Urban Company's service booking bot: after 5 turns, the bot knows the customer
-  wants AC repair in Gurgaon on Sunday, prefers female technicians, has a 3rd floor
-  flat — all from conversation history without repeating questions.
-
-Code reference: src/day4/memory_persistence.py:get_conversation_history()
-Test reference: tests/test_memory_persistence.py:TestChatbotGraph::test_history_has_correct_roles
+  Every invoke() creates a checkpoint snapshot. get_state_history() returns all
+  past states for a thread. You can fork from any snapshot — full time travel.
+  SqliteSaver persists checkpoints across process restarts.
+Code reference: src/day4/memory_persistence.py — get_state_history
+Test reference: tests/test_memory_persistence.py — TestStateHistory
 
 
-TOPIC 12: Time Travel (get_state_history)
-What it is:
-  Every .invoke() with a checkpointer creates a new checkpoint snapshot.
-  get_state_history() returns all snapshots in reverse chronological order.
-  You can replay from any checkpoint by passing its checkpoint_id in config.
-  This enables debugging, A/B testing agent strategies, and rollback.
-
-Real-world example (Indian context):
-  Meesho's catalog agent: when a product description goes wrong, support can
-  "time travel" to the checkpoint before the error, inspect what data was
-  available, reproduce the bug, and fix the prompt without affecting live agents.
-
-Code reference: src/day4/memory_persistence.py:get_state_history()
-Test reference: tests/test_memory_persistence.py:TestChatbotGraph::test_state_history_has_snapshots
-
-
-TOPIC 13: SqliteSaver for Persistence
-What it is:
-  SqliteSaver writes checkpoints to a SQLite file on disk. Unlike InMemorySaver,
-  memory persists across process restarts — the bot remembers conversations from
-  previous sessions. For production: use PostgresSaver (Supabase, RDS, CloudSQL)
-  for multi-instance deployments.
-
-Real-world example (Indian context):
-  Ola's driver onboarding assistant: uses SqliteSaver so if the driver closes the
-  app mid-onboarding, their progress (documents uploaded, forms filled) is preserved
-  when they return. No starting over from scratch.
-
-Code reference: src/day4/memory_persistence.py — SqliteSaver pattern in docstring
-Test reference: tests/test_memory_persistence.py:TestChatbotGraph::test_with_checkpointer_preserves_history
-
-
-MODULE 4: HUMAN-IN-THE-LOOP
+MODULE 4: HUMAN-IN-THE-LOOP (HITL)
 Source: src/day4/human_in_loop.py
 Notebook: notebooks/04_human_in_loop.ipynb
 -------------------------------------------------
 
-TOPIC 14: interrupt() — Pausing Execution
+TOPIC 17: interrupt() and Command(resume=...)
 What it is:
-  interrupt(value) pauses graph execution at any node and stores the current state
-  in the checkpointer. The graph is suspended — not running, not consuming compute.
-  Your application code inspects the interrupted state (what action was drafted)
-  and displays it to a human for review. Execution resumes with Command(resume=...).
+  interrupt() pauses graph execution and saves state to checkpointer.
+  The human inspects the state, then resumes with Command(resume=True/False).
+  The graph continues from exactly where it paused. Essential for high-stakes actions.
+Code reference: src/day4/human_in_loop.py — build_hitl_graph, review_node
+Test reference: tests/test_human_in_loop.py — TestApprovalWorkflow
 
-Real-world example (Indian context):
-  ICICI Bank's loan agent: after AI analyses credit file and drafts "Approve Rs 40L
-  at 8.5%", interrupt() pauses execution. The relationship manager reviews the
-  recommendation in their web UI, checks soft factors, and approves or modifies.
-
-Code reference: src/day4/human_in_loop.py:build_hitl_graph() — interrupt() call
-Test reference: tests/test_human_in_loop.py:TestHITLGraph::test_submit_returns_draft
-
-
-TOPIC 15: Command(resume=...) — Continuing
+TOPIC 18: Stateful Agent Workflows with Interrupts
 What it is:
-  Command(resume=value) is the signal to continue a paused graph. The value
-  you pass (True, False, or any data) is returned from the interrupt() call
-  in the node. This is how human decisions flow back into the graph.
-  Multiple resumes are possible — a multi-step approval workflow can have N interrupts.
-
-Real-world example (Indian context):
-  Cognizant's contract review system: AI drafts contract -> interrupt() for legal
-  review -> Command(resume={'approved': True, 'changes': [...]}) passes back
-  both the decision and any requested modifications for the revision node.
-
-Code reference: src/day4/human_in_loop.py:ApprovalWorkflow._resume()
-Test reference: tests/test_human_in_loop.py:TestHITLGraph::test_approve_gives_executed_result
+  interrupt_before=["node_name"] at compile time tells LangGraph which nodes
+  to pause before. The human sees the full state (including draft_action)
+  and decides. ApprovalWorkflow wraps submit/approve/reject into a clean API.
+Code reference: src/day4/human_in_loop.py — ApprovalWorkflow
+Test reference: tests/test_human_in_loop.py — TestApprovalWorkflow::test_approve
 
 
-TOPIC 16: Approval Workflow Pattern
-What it is:
-  The ApprovalWorkflow class wraps the interrupt/resume pattern into a clean API:
-  submit() -> approve() or reject(). This is the industry-standard pattern for
-  any AI system that takes irreversible actions: submit for review, human decides,
-  execute or discard. The pattern works for single or chained approvals.
-
-Real-world example (Indian context):
-  Tata Consultancy Services' bulk communications platform: AI drafts email to
-  50,000 clients -> ApprovalWorkflow.submit() -> Account Director reviews in
-  Slack -> approves -> ApprovalWorkflow.approve() -> email executes. Full audit trail.
-
-Code reference: src/day4/human_in_loop.py:ApprovalWorkflow (dataclass)
-Test reference: tests/test_human_in_loop.py:TestHITLGraph::test_reject_gives_rejected_result
-
-
-TOPIC 17: Breakpoints
-What it is:
-  interrupt_before=["node_name"] tells LangGraph to interrupt execution before
-  a specific node runs. interrupt_after=["node_name"] interrupts after.
-  Multiple breakpoints can be set. This is used for review pipelines where
-  a human must inspect state at specific checkpoints in the workflow.
-
-Real-world example (Indian context):
-  Wipro's AI code review pipeline: interrupt_before=["deploy_node"] means
-  a human must review before every deployment. interrupt_before=["test_runner"]
-  means a QA engineer reviews the test plan before it executes.
-
-Code reference: src/day4/human_in_loop.py:build_hitl_graph() — interrupt_before=["human_review"]
-Test reference: tests/test_human_in_loop.py:TestHITLGraph::test_graph_compiles
-
-
-MODULE 5: MULTI-AGENT SYSTEMS
+MODULE 5: MULTI-AGENT SYSTEMS & AGENTIC RAG
 Source: src/day4/multi_agent.py
 Notebook: notebooks/05_multi_agent.ipynb
 -------------------------------------------------
 
-TOPIC 18: Subgraphs
+TOPIC 19: Multi-Agent Coordination — Supervisor Pattern
 What it is:
-  A subgraph is a complete compiled LangGraph used as a node inside a parent graph.
-  The parent graph calls subgraph.invoke(sub_state) and treats the result like any
-  other node output. Subgraphs enable modularity — build and test agents independently,
-  then compose them. Each subgraph has its own state TypedDict.
+  One supervisor agent routes tasks to specialist sub-agents. The supervisor
+  sees all results and decides what to do next. Subgraphs are independent
+  compilable graphs used as nodes in the supervisor graph.
+Code reference: src/day4/multi_agent.py — build_supervisor_graph, build_research_team
+Test reference: tests/test_multi_agent.py — TestSupervisorGraph
 
-Real-world example (Indian context):
-  Accenture India's research automation: a parent "strategy report" graph has
-  research_subgraph, analysis_subgraph, and writing_subgraph as nodes. Each is
-  independently developed by different teams and composed at the parent level.
-
-Code reference: src/day4/multi_agent.py:build_research_subgraph(), build_writer_subgraph()
-Test reference: tests/test_multi_agent.py:TestResearchSubgraph::test_subgraph_runs
-
-
-TOPIC 19: Supervisor Pattern
+TOPIC 20: Subgraph Composition
 What it is:
-  A supervisor is a routing agent that decides which sub-agent to call next
-  based on the current state. The supervisor has no domain expertise — it only
-  reads the state and routes. After each sub-agent completes, control returns
-  to the supervisor which decides the next step or terminates.
+  Each subgraph (research, writer) is a complete LangGraph that compiles independently.
+  The supervisor graph uses them as nodes via .compile() output. Clean separation of
+  concerns — each agent has its own state and logic.
+Code reference: src/day4/multi_agent.py — build_research_subgraph, build_writer_subgraph
+Test reference: tests/test_multi_agent.py — TestResearchSubgraph
 
-Real-world example (Indian context):
-  Freshworks' customer support: supervisor reads ticket type and current state.
-  Routes to billing_agent (payment issues), tech_agent (product bugs), or
-  escalation_agent (VIP customers). Each call returns to supervisor for next decision.
-
-Code reference: src/day4/multi_agent.py:build_supervisor_graph(), build_research_team()
-Test reference: tests/test_multi_agent.py:TestSupervisorGraph::test_full_pipeline_runs
-
-
-TOPIC 20: Agent Handoffs
+TOPIC 21: Agentic RAG Pattern
 What it is:
-  An agent handoff occurs when one agent explicitly sets the next_agent field
-  in state to route control to a specific agent. Unlike the supervisor (which
-  always routes), handoffs let agents themselves decide when to pass control.
-  Used for specialised escalation patterns.
-
-Real-world example (Indian context):
-  Practo's medical AI: general_agent triages the query and sets
-  next_agent="cardiologist_agent" or "dermatologist_agent" based on symptoms.
-  The specialist agent then takes over with domain-specific tools and knowledge.
-
-Code reference: src/day4/multi_agent.py:SupervisorState (next_agent field), route_supervisor()
-Test reference: tests/test_multi_agent.py:TestSupervisorGraph::test_messages_accumulate
+  Retrieve → Grade relevance → Rewrite query if irrelevant → Retrieve again → Generate.
+  Max 2 rewrite iterations. Grade node checks if retrieved docs answer the query.
+  Rewrite node expands the query. Much higher answer quality than single-shot RAG.
+Code reference: src/day4/multi_agent.py — build_agentic_rag_graph, RAGState
+Test reference: tests/test_multi_agent.py — TestAgenticRAG
 
 
-TOPIC 21: Parallel Agents (fan-out/fan-in)
-What it is:
-  Fan-out: one node routes to multiple agents simultaneously. Fan-in: a merge
-  node collects all their results. LangGraph supports this via parallel branches.
-  5 agents running in parallel complete a task in 1/5th the time of sequential agents.
-  Critical for research, analysis, and data collection at scale.
-
-Real-world example (Indian context):
-  BigBasket's pricing agent: fans out to 5 city_pricing_agents simultaneously
-  (Mumbai, Delhi, Bangalore, Chennai, Hyderabad), each checking local competitor
-  prices. Fan-in collects all 5 results for national pricing strategy.
-
-Code reference: src/day4/multi_agent.py:build_supervisor_graph() — pattern extends to parallel
-Test reference: tests/test_multi_agent.py:TestSupervisorGraph::test_final_output_contains_task
-
-
-MODULE 6: MODEL CONTEXT PROTOCOL (MCP)
+MODULE 6: MCP — FROM CONSUMER TO PRODUCER
 Source: src/day4/mcp_integration.py
 Notebook: notebooks/06_mcp_integration.ipynb
 -------------------------------------------------
 
-TOPIC 22: What is MCP?
+TOPIC 22: MCP Server Responsibilities (Tools, Resources, Prompts)
 What it is:
-  Model Context Protocol (Anthropic, 2024) is an open standard that defines how
-  AI models connect to external tools, APIs, and data sources. Instead of writing
-  custom integrations for each tool, you run an MCP server that exposes tools via
-  a standard JSON-RPC interface. Any MCP-compatible client (Claude, LangChain,
-  LangGraph) connects and discovers tools dynamically at runtime.
+  An MCP server exposes three types: tools (callable actions), resources (read-only
+  data URIs), and prompts (reusable templates). Clients discover them via tools/list.
+  FastMCP makes building servers as easy as adding decorators.
+Code reference: src/day4/mcp_integration.py — show_mcp_producer_code
+Test reference: tests/test_mcp_integration.py — TestMCPProducer
 
-Real-world example (Indian context):
-  Juspay's payments AI: instead of hardcoding Razorpay SDK calls and NPCI API calls,
-  they run a Juspay MCP server that exposes process_payment, refund_transaction,
-  and check_upi_status as MCP tools. Their LangGraph agent connects to it without
-  any payment-specific code in the agent itself.
-
-Code reference: src/day4/mcp_integration.py:show_mcp_setup(), show_mcp_servers()
-Test reference: tests/test_mcp_integration.py:TestMCPConcepts::test_show_mcp_setup_returns_code
-
-
-TOPIC 23: MultiServerMCPClient
+TOPIC 23: JSON-RPC 2.0 Protocol
 What it is:
-  MultiServerMCPClient connects to multiple MCP servers simultaneously and
-  exposes all their tools as a single flat list. Your agent doesn't know or
-  care which server provides which tool — it just sees "read_file", "create_issue",
-  "query_postgres" as available tools. Used as an async context manager.
+  The wire protocol for MCP. Every call is {jsonrpc, id, method, params}.
+  Every response is {jsonrpc, id, result} or {jsonrpc, id, error}.
+  Methods: tools/list (discover), tools/call (execute), resources/read, prompts/get.
+Code reference: src/day4/mcp_integration.py — show_json_rpc_example
+Test reference: tests/test_mcp_integration.py — TestJSONRPC
 
-Real-world example (Indian context):
-  CRED's financial intelligence agent connects to: database MCP server (user data),
-  filesystem MCP server (report templates), and Slack MCP server (notifications).
-  MultiServerMCPClient merges all 15+ tools into one list for the agent.
-
-Code reference: src/day4/mcp_integration.py:show_mcp_setup() — MultiServerMCPClient usage
-Test reference: tests/test_mcp_integration.py:TestMCPConcepts::test_show_mcp_servers_returns_list
-
-
-TOPIC 24: Popular MCP Servers
+TOPIC 24: Wrapping Spring Boot as MCP + tiktoken
 What it is:
-  Anthropic and the community maintain a growing catalogue of MCP servers.
-  Key ones: @modelcontextprotocol/server-filesystem (read/write files),
-  @modelcontextprotocol/server-github (repos, issues, PRs),
-  @modelcontextprotocol/server-postgres (SQL queries),
-  databricks-labs/mcp-server-databricks (jobs, SQL, notebooks).
-  All follow the same standard — swap servers without changing agent code.
-
-Real-world example (Indian context):
-  Deloitte India's audit automation: filesystem MCP server reads client documents,
-  PostgreSQL MCP server queries financial databases, GitHub MCP server creates
-  audit findings as issues. Same LangGraph agent code, three different MCP servers.
-  Adding a new data source = add one server config, zero agent code changes.
-
-Code reference: src/day4/mcp_integration.py:show_mcp_servers(), mcp_filesystem_read, mcp_databricks_run_sql
-Test reference: tests/test_mcp_integration.py:TestMCPConcepts::test_databricks_server_included
+  Any REST API (Spring Boot, FastAPI, Express) can be wrapped as an MCP tool
+  using httpx calls inside @mcp.tool() functions. tiktoken counts tokens before
+  sending context to the LLM — prevents exceeding context window limits.
+Code reference: src/day4/mcp_integration.py — show_spring_boot_mcp_wrapper, tokenize_and_count
+Test reference: tests/test_mcp_integration.py — TestTokenizeAndCount
 
 
-====================================================
-DATABRICKS INTEGRATION MAP
-====================================================
-
-Topic                    | Databricks Integration
--------------------------|------------------------------------------------------
-StateGraph / Nodes       | Run as Databricks Workflow task; state in Delta Lake
-@tool decorator          | Tool wraps Databricks SQL / Job API calls
-ReAct Agent              | Agent as MLflow pyfunc model, served via Model Serving
-InMemorySaver            | Dev/testing on Databricks notebooks
-SqliteSaver              | Single-node Databricks job persistence
-PostgresSaver            | Production: Azure PostgreSQL / AWS RDS from Databricks
-interrupt() HITL         | Approval decisions logged to Delta audit table
-Multi-agent Supervisor   | Databricks Workflows orchestrates parallel agent jobs
-Subgraphs                | Each subgraph = independent MLflow registered model
-MCP Databricks Server    | Native: databricks-labs/mcp-server-databricks
-Conversation History     | Store in Delta Lake for analytics and compliance
-Time Travel              | Delta Lake RESTORE / VERSION AS OF for state replay
-Parallel Agents          | Databricks Jobs multi-task job (true parallelism)
-LangSmith Tracing        | LANGCHAIN_TRACING_V2=true + Databricks secrets for key
-
-====================================================
-END OF DAY 4 TOPICS
-====================================================
+TECHNOLOGIES COVERED
+====================
+- LangGraph StateGraph, conditional edges, checkpointers
+- Human-in-the-loop: interrupt(), Command(resume=...)
+- LangChain LCEL: PromptTemplate, @tool, BaseTool, AgentExecutor, create_react_agent
+- Anthropic Claude Messages API (via anthropic SDK)
+- Instructor library for Pydantic structured outputs
+- tiktoken for token counting and context window management
+- MCP Python SDK (FastMCP): tools, resources, prompts, JSON-RPC 2.0
+- Spring Boot-backed MCP server via httpx wrapper
+- Pydantic BaseModel for tool schemas and structured outputs
+- MemorySaver, SqliteSaver for conversation persistence
+- pytest for all unit and integration tests
