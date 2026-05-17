@@ -1,0 +1,48 @@
+Day 5 — Enterprise RAG, Multi-Agent Orchestration & Deployment
+==============================================================
+
+MODULE 1: Multi-Agent Orchestration (Notebook 01)
+--------------------------------------------------
+Topic 01: LangGraph StateGraph — shared TypedDict state flowing between nodes
+Topic 02: Multi-agent pipeline — query rewrite → retrieval → synthesis
+Topic 03: Conditional routing — route_after_retrieval, empty-doc API fallback
+Topic 04: Supervisor pattern — run N agents, pick best result by length/confidence
+Topic 05: Parallel agent execution — fan-out, fan-in with LangGraph Send()
+
+MODULE 2: Hybrid Search & RRF (Notebook 02)
+--------------------------------------------
+Topic 06: BM25 (BM25Okapi) — keyword ranking with term frequency and IDF
+Topic 07: Dense semantic search — cosine similarity on embedding vectors
+Topic 08: Reciprocal Rank Fusion (RRF) — merge ranked lists, k=60 constant
+Topic 09: HybridSearcher — BM25 + Dense fusion via RRF (EnsembleRetriever pattern)
+Topic 10: Cohere rerank pattern — mock Jaccard overlap, real API usage shown
+Topic 11: Query rewriting strategies — expand, hypothetical document, decompose
+
+MODULE 3: Streaming & Frontend (Notebook 03)
+---------------------------------------------
+Topic 12: Generator-based token streaming — Python yield, word-by-word output
+Topic 13: Server-Sent Events (SSE) — data: JSON\n\n format, EventSource API
+Topic 14: FastAPI StreamingResponse — media_type="text/event-stream", headers
+Topic 15: Vercel AI SDK — useChat React hook connecting to SSE endpoint
+Topic 16: StreamingOrchestrator — wraps LangGraph graph, yields SSE strings
+
+MODULE 4: RAGAS Evaluation (Notebook 04)
+-----------------------------------------
+Topic 17: RAGAS faithfulness — answer grounded in retrieved contexts (word overlap proxy)
+Topic 18: RAGAS answer relevancy — answer addresses the question (question-answer overlap)
+Topic 19: RAGAS context recall — retrieved docs cover the ground truth
+Topic 20: RAGMonitor — record queries, compute metrics, detect drift
+
+MODULE 5: Authentication & Cost Tracking (Notebook 05)
+-------------------------------------------------------
+Topic 21: API key authentication — simple key validation with tier support
+Topic 22: JWT authentication — FastAPI HTTPBearer + jwt.decode middleware
+Topic 23: LLM cost tracking — per-model pricing, input/output token cost calculation
+Topic 24: LangSmith tracing — LANGCHAIN_TRACING_V2, @traceable decorator, custom spans
+
+MODULE 6: Deployment Capstone (Notebook 06)
+--------------------------------------------
+Topic 25: Docker containerization — Dockerfile, python:3.12-slim, uvicorn CMD
+Topic 26: docker-compose.yml generation — DockerConfig, multi-service stacks, healthchecks
+Topic 27: GitOps with GitHub Actions — push → test → build → deploy CI/CD pipeline
+Topic 28: Enterprise app walkthrough — FastAPI + Streamlit + BM25 + OpenAI full stack

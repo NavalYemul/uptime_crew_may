@@ -1,0 +1,19 @@
+Northstar Analytics Product FAQ
+
+Q: What is Orbit?
+A: Orbit is Northstar's internal AI assistant for searching product notes, support guides, and team playbooks.
+
+Q: Which teams use Orbit?
+A: Customer success, sales engineering, and platform operations are the primary internal users.
+
+Q: What is the recommended pilot use case?
+A: The recommended pilot use case is answering repetitive support and onboarding questions from internal documentation.
+
+Q: Where should local knowledge files be placed for this demo?
+A: Local knowledge files should be placed inside the data directory so they can be chunked and retrieved by the application.
+
+Q: What kinds of files are expected?
+A: The app supports PDF, TXT, and MD files as local knowledge inputs.
+
+Q: What should happen when the answer is missing from the local corpus?
+A: The agent should call the web_search tool to look up public information rather than inventing an answer.
