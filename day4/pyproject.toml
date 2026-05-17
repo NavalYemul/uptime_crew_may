@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "day4-agents-langgraph-mcp"
+version = "0.1.0"
+description = "Day 4 — LangGraph Agents, Memory, HITL & MCP"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain>=0.3",
+    "langchain-core>=0.3",
+    "langchain-openai>=0.3",
+    "langchain-community>=0.3",
+    "langchain-text-splitters>=0.3",
+    "langgraph>=0.6",
+    "langgraph-checkpoint>=2.1",
+    "langgraph-prebuilt>=0.6",
+    "langsmith>=0.4",
+    "openai>=1.0",
+    "python-dotenv>=1.0",
+    "numpy>=1.26",
+    "pytest>=8.2",
+    "jupyter>=1.0",
+    "jupyterlab>=4.2",
+    "ipykernel>=6.29",
+]
+
+[project.optional-dependencies]
+mcp = ["langchain-mcp-adapters>=0.1", "mcp>=1.0"]
+sqlite = ["langgraph-checkpoint-sqlite>=2.0", "aiosqlite>=0.21"]
+
+[tool.pytest.ini_options]
+testpaths  = ["tests"]
+pythonpath = ["src"]
+addopts    = "-v"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/day4"]
