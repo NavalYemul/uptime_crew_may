@@ -5,7 +5,7 @@ from typing import Any
 import requests
 import streamlit as st
 
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8001").rstrip("/")
 LOCAL_PROMPTS = [
     "What is Orbit?",
     "Which teams use Orbit?",
@@ -17,8 +17,8 @@ WEB_PROMPTS = [
     "What is the latest NVIDIA market cap?",
 ]
 WELCOME_MESSAGE = (
-    "Ask about the local demo docs or try something current to trigger the "
-    "`web_search` tool."
+    "Ask about the local demo docs or try something current to trigger a tool. "
+    "Available: `web_search`, `youtube_search`, `wikipedia_search`, `calculate`."
 )
 
 
@@ -264,7 +264,7 @@ def render_hero(status: dict[str, Any] | None) -> None:
                 <span class="chip">Backend: {BACKEND_URL}</span>
                 <span class="chip">Model: {model_name}</span>
                 <span class="chip">Local files: {data_count}</span>
-                <span class="chip">Tool fallback: web_search</span>
+                <span class="chip">Tools: web · youtube · wikipedia · calc</span>
             </div>
         </section>
         """,
@@ -313,10 +313,13 @@ def build_activity_from_response(query: str, data: dict[str, Any]) -> list[dict[
             }
         )
 
+    cost_str = ""
+    if data.get("usage", {}).get("cost_usd") is not None:
+        cost_str = f" | ${data['usage']['cost_usd']:.5f}"
     entries.append(
         {
             "label": "Answer Ready",
-            "copy": "Response rendered with supporting evidence and resources.",
+            "copy": f"Response rendered with supporting evidence and resources.{cost_str}",
         }
     )
     return entries
@@ -398,8 +401,23 @@ def render_chat_history() -> None:
                     f"<span class='badge'>{data['source']}</span>",
                     f"<span class='badge'>{data['tool_strategy']}</span>",
                 ]
+                if data.get("cache_hit"):
+                    badges.append("<span class='badge'>cache hit</span>")
                 if data.get("tool_calls"):
-                    badges.append("<span class='badge badge-warm'>web_search used</span>")
+                    tools_used = {tc["tool"] for tc in data["tool_calls"]}
+                    for t in tools_used:
+                        badges.append(f"<span class='badge badge-warm'>{t}</span>")
+                if data.get("eval"):
+                    ev = data["eval"]
+                    badges.append(
+                        f"<span class='badge'>faithfulness {ev['faithfulness']:.0%}</span>"
+                    )
+                    badges.append(
+                        f"<span class='badge'>relevancy {ev['answer_relevancy']:.0%}</span>"
+                    )
+                if data.get("usage", {}).get("cost_usd") is not None:
+                    cost = data["usage"]["cost_usd"]
+                    badges.append(f"<span class='badge badge-warm'>${cost:.5f}</span>")
                 st.markdown("".join(badges), unsafe_allow_html=True)
 
                 with st.expander("Why this answer?", expanded=False):
@@ -488,6 +506,21 @@ def render_debug_panel() -> None:
         st.write(f"Local chunks: `{len(data.get('local_documents', []))}`")
         st.write(f"Tool calls: `{len(data.get('tool_calls', []))}`")
         st.write(f"Cache hit: `{data['cache_hit']}`")
+        if data.get("rewritten_query") and data["rewritten_query"] != data.get("query", ""):
+            st.write(f"Rewritten query: `{data['rewritten_query']}`")
+        if data.get("eval"):
+            ev = data["eval"]
+            st.write(
+                f"Faithfulness: `{ev['faithfulness']:.0%}` | "
+                f"Relevancy: `{ev['answer_relevancy']:.0%}`"
+            )
+        if data.get("usage"):
+            u = data["usage"]
+            st.write(
+                f"Tokens: `{u.get('input_tokens', 0)}` in / "
+                f"`{u.get('output_tokens', 0)}` out | "
+                f"Cost: `${u.get('cost_usd', 0):.5f}`"
+            )
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.set_page_config(

@@ -11,3 +11,6 @@ tiktoken
 python-dotenv
 pypdf
 ddgs
+langsmith
+youtube_search
+wikipedia

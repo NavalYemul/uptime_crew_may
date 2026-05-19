@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from rag_pipeline import ask_question, get_pipeline_status
+from rag_pipeline import ask_question, get_metrics, get_pipeline_status
 
 app = FastAPI(title="Enterprise RAG Agent API")
 
@@ -179,6 +179,11 @@ def health():
 @app.get("/status")
 def status():
     return get_pipeline_status()
+
+
+@app.get("/metrics")
+def metrics():
+    return get_metrics()
 
 
 class QueryRequest(BaseModel):
